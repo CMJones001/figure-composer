@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+from copy import copy
 import itertools
 import numpy as np
 import PIL
@@ -28,6 +29,8 @@ from skimage import io, transform
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 FONT = PROJECT_DIR / "fonts/cm-unicode-0.7.0/cmunrm.ttf"
 
+Im = np.ndarray
+
 
 @dataclass
 class Label:
@@ -37,10 +40,20 @@ class Label:
 
 
 class Image:
-    def __init__(self, data: np.ndarray, path: Path):
+    def __init__(self, data: Im, path: Path, original_data: Optional[Im] = None):
         self.data = data
         self.path = path
-        self.original_data = self.data.copy()
+        self.original_data = (
+            self.data.copy() if original_data is None else original_data
+        )
+
+    @property
+    def y(self):
+        return self.data.shape[0]
+
+    @property
+    def x(self):
+        return self.data.shape[1]
 
     @property
     def shape(self):
@@ -52,11 +65,42 @@ class Image:
         dpi = 300
         return self.data.shape * dpi
 
+    @property
+    def aspect(self):
+        return self.x / self.y
+
     def __repr__(self):
         return (
             f"Image({self.path}, new shape {self.shape}, old shape"
             f" {self.original_data.shape})"
         )
+
+    def pad(
+        self, new_x: Optional[int] = None, new_y: Optional[int] = None, mode="constant"
+    ):
+        """Pad the array with zeros.
+
+        For now, we pad left and down.
+        """
+        pad_x = new_x - self.x if new_x else 0
+        pad_y = new_y - self.y if new_y else 0
+
+        if pad_x < 0 or pad_y < 0:
+            raise ValueError(
+                "Attempting to pad array to smaller size."
+                f"({self.shape}) -> ({new_y, new_x, self.shape[2]}) "
+            )
+
+        # Return in the trival case
+        if pad_x == 0 and pad_y == 0:
+            return self.data
+
+        padding = ((0, pad_y), (0, pad_x), (0, 0))
+        padded_im = np.pad(self.data, padding, mode=mode)
+
+        im_copy = copy(self)
+        im_copy.data = padded_im
+        return im_copy
 
     def resize(self, new_x: Optional[int] = None, new_y: Optional[int] = None, order=3):
         """ Return a resized image. Note the original is not changed! """
@@ -66,7 +110,10 @@ class Image:
         resized = transform.resize(
             self.data, new_dims, order=order, preserve_range=True
         )
-        return resized
+
+        im_copy = copy(self)
+        im_copy.data = resized
+        return im_copy
 
     def annotate(self, labels: List[Label], inplace=True):
         """ Add text labels to the image. """
@@ -94,10 +141,6 @@ class MergedImage(Image):
         self.data = data
         self.images = images
 
-    def __post_init(self):
-        # TODO: Get a list of figures positions within the main body
-        pass
-
 
 def load_images(figure_paths: List[Path]) -> List[Image]:
     """ Load the path of images into an array. """
@@ -107,7 +150,7 @@ def load_images(figure_paths: List[Path]) -> List[Image]:
     return images
 
 
-def merge_image_row(images: List[Image], y_size: int):
+def merge_row_scale(images: List[Image], y_size: int):
     """Combine multiple images, while resizing them all to match the image in
     index ``fit_to_image``
 
@@ -117,12 +160,31 @@ def merge_image_row(images: List[Image], y_size: int):
     a fraction of the desired width.
     """
     resized_images = [i.resize(new_y=y_size) for i in images]
-    ic([im.shape for im in images])
+    merged_data = np.concatenate([i.data for i in resized_images], axis=1)
+    return MergedImage(merged_data, resized_images)
 
-    merged_data = np.concatenate(resized_images, axis=1)
-    merged_image = MergedImage(merged_data, resized_images)
 
-    return merged_image
+def merge_row_pad(images: List[Image], pad_mode="edge"):
+    """ Combine images into a row, padding any hieight difference. """
+    max_y = max([i.y for i in images])
+    padded_images = [i.pad(new_y=max_y, mode=pad_mode) for i in images]
+    merged_data = np.concatenate([i.data for i in padded_images], axis=1)
+    return MergedImage(merged_data, padded_images)
+
+
+def merge_col_scale(images: List[Image], x_size: int):
+    """ Combine images into a row, padding any hieight difference. """
+    resized_images = [i.resize(new_x=x_size) for i in images]
+    merged_data = np.concatenate([i.data for i in resized_images], axis=0)
+    return MergedImage(merged_data, resized_images)
+
+
+def merge_col_pad(images: List[Image], pad_mode="edge"):
+    """ Combine images into a row, padding any hieight difference. """
+    max_x = max([i.x for i in images])
+    padded_images = [i.pad(new_x=max_x, mode=pad_mode) for i in images]
+    merged_data = np.concatenate([i.data for i in padded_images], axis=0)
+    return MergedImage(merged_data, padded_images)
 
 
 def _get_new_dimensions(
@@ -179,18 +241,27 @@ def _get_test_ims() -> List[Path]:
 
 if __name__ == "__main__":
     im_paths = _get_test_ims()
-    images = load_images(im_paths)[:5]
+    images = load_images(im_paths)[4:7]
 
-    labels = [f"{i}." for i in "abcdefghi"[:5]]
-    pos = [(30 + 1000 * i, 20) for i in range(len(labels))]
-    labels = [Label(l, p) for l, p in zip(labels, pos)]
+    all_ = merge_col_scale(images, x_size=1000)
+    all_.save("/tmp/all_merge.png")
 
-    # for image, label in zip(images, labels):
-    #     image.annotate([label])
-    #     ic(image.shape)
+    # last_im = images.pop()
+    # last_im = last_im.resize(new_x=2000)
+    # images.append(last_im)
 
-    merged_im = merge_image_row(images, y_size=1000)
-    ic(merged_im.shape)
-    merged_im.annotate(labels)
-    merged_im.save("/tmp/merged_auto.png")
-    ic(images)
+    # new_arr = images[0].pad(new_y=2000, mode="edge")
+    # im = Image(new_arr, images[0].path)
+    # im.save("/tmp/padded-edge.png")
+    # print(im)
+
+    # labels = [f"{i}." for i in "abcdefghi"[:3]]
+    # pos = [(30 + 1090 * i, 20) for i in range(len(labels))]
+    # labels = [Label(l, p) for l, p in zip(labels, pos)]
+
+    # merged_im = merge_row_scale(images, y_size=1000)
+    # merged_im = merge_row_pad(images, pad_mode="edge")
+    # ic(merged_im.shape)
+    # merged_im.annotate(labels)
+    # merged_im.save("/tmp/merged_auto.png")
+    # ic(images)

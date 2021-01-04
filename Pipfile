@@ -20,7 +20,6 @@ pdbpp = "*"
 scipy = "*"
 scikit-image = "*"
 hachoir = "*"
-opencv-python = "*"
 
 [requires]
 python_version = "3.8"
