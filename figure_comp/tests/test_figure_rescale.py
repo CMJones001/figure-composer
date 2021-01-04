@@ -124,10 +124,31 @@ class TestDualMerge(unittest.TestCase):
 
         merged_fig = fr.merge_col_pad([first_row, second_row], pad_mode="edge")
         if self.save:
-            merged_fig.save("/tmp/dual-col-pad.png")
+            merged_fig.save("/tmp/test-dual-col-pad.png")
 
         total_width = max([i.x for i in [first_row, second_row]])
         total_height = sum([i.y for i in [first_row, second_row]])
+        shape_expected = (total_height, total_width, 4)
+
+        shape_test = merged_fig.shape
+        self.assertEqual(shape_test, shape_expected)
+
+    def test_scale_addition(self):
+        """ Test adding of two rows into a grid. """
+        sub_images = self.images[:7]
+
+        y_size = 500
+        first_row = fr.merge_row_scale(self.images[:5], y_size=y_size)
+        second_row = fr.merge_row_scale(self.images[5:7], y_size=y_size)
+
+        x_size = 2500
+        total_width = x_size
+        total_height = sum([int(x_size / i.aspect) for i in [first_row, second_row]])
+
+        merged_fig = fr.merge_col_scale([first_row, second_row], x_size=x_size)
+        if True:
+            merged_fig.save("/tmp/test-dual-col-scale.png")
+
         shape_expected = (total_height, total_width, 4)
 
         shape_test = merged_fig.shape

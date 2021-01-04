@@ -140,6 +140,7 @@ class MergedImage(Image):
     def __init__(self, data: np.ndarray, images: List[Image]):
         self.data = data
         self.images = images
+        self.original_data = self.data.copy()
 
 
 def load_images(figure_paths: List[Path]) -> List[Image]:
