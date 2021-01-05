@@ -29,6 +29,14 @@ from typing import Union, List
 class _Container:
     cont: List[Union["_Container", Image]]
 
+    def run(self) -> fr.MergedImage:
+        def activate(c: List[Union["_Container", Image]]):
+            """ Resolve the nested containers or pass images through """
+            return c.run() if isinstance(c, _Container) else c
+
+        cont = [activate(c) for c in self.cont]
+        return self.merge_func(cont, **self.args)
+
 
 @dataclass
 class Row(_Container):
@@ -37,30 +45,43 @@ class Row(_Container):
     def __post_init__(self):
         self.scale = "scale"
         self.args = dict(y_size=self.y_size)
+        self.merge_func = fr.merge_row_scale
 
     def cmd(self):
         args = ", ".join([f"{k}={v}" for k, v in self.args.items()])
         cmd = f"merge_row_{self.scale}({self.cont}, {args})"
         return cmd
 
-    def run(self) -> fr.MergedImage:
-        def activate(c: List[Union["_Container", Image]]):
-            """ Resolve the nested containers or pass images through """
-            return c.cmd() if isinstance(c, _Container) else c
 
-        cont = [activate(c) for c in self.cont]
-        # cont = self.cont
-        return fr.merge_row_scale(cont, **self.args)
+@dataclass
+class Col(_Container):
+    x_size: int = 500
+
+    def __post_init__(self):
+        self.scale = "scale"
+        self.args = dict(x_size=self.x_size)
+        self.merge_func = fr.merge_col_scale
+
+    def cmd(self):
+        args = ", ".join([f"{k}={v}" for k, v in self.args.items()])
+        cmd = f"merge_col_{self.scale}({self.cont}, {args})"
+        return cmd
 
 
 if __name__ == "__main__":
     import numpy as np
 
-    test_data = [np.ones([3, 3, 3]) * 24 * i for i in range(10)]
+    n_repeats = 10
+    block_height = 100
+    test_data = [np.ones([3, 3, 3]) * i * 200 // n_repeats for i in range(n_repeats)]
     test_images = [fr.Image(t, path=None) for t in test_data]
 
-    row = Row(test_images, y_size=100)
+    test_images.append(
+        Row([fr.Image(np.zeros([3, 3, 3]), path=None)], y_size=block_height),
+    )
+
+    row = Row(test_images, y_size=block_height)
     merged_im = row.run()
 
-    print(merged_im.shape)
-    merged_im.save("/tmp/test-merged-row.png")
+    shape_test = merged_im.shape
+    shape_expected = (block_height, block_height * n_repeats, 3)
