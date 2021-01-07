@@ -42,7 +42,7 @@ class Label:
 class Image:
     def __init__(self, data: Im, path: Path, original_data: Optional[Im] = None):
         self.data = data
-        self.path = path
+        self.path = Path(path)
         self.original_data = (
             self.data.copy() if original_data is None else original_data
         )
@@ -68,6 +68,13 @@ class Image:
     @property
     def aspect(self):
         return self.x / self.y
+
+    def __eq__(self, o):
+        if not isinstance(o, Image):
+            raise TypeError("Comparing image to non-image")
+        path_eq = self.path.samefile(o.path)
+        data_eq = np.allclose(self.data, o.data)
+        return path_eq and data_eq
 
     def __repr__(self):
         return (
@@ -151,7 +158,7 @@ def load_images(figure_paths: List[Path]) -> List[Image]:
     return images
 
 
-def merge_row_scale(images: List[Image], y_size: int):
+def merge_row_scale(images: List[Image], y_size: Optional[int] = None):
     """Combine multiple images, while resizing them all to match the image in
     index ``fit_to_image``
 
@@ -160,6 +167,8 @@ def merge_row_scale(images: List[Image], y_size: int):
     We might also calculate the fill width of the figure, then calculate this as
     a fraction of the desired width.
     """
+    if y_size is None:
+        y_size = max([i.y for i in images])
     resized_images = [i.resize(new_y=y_size) for i in images]
     merged_data = np.concatenate([i.data for i in resized_images], axis=1)
     return MergedImage(merged_data, resized_images)
@@ -173,8 +182,10 @@ def merge_row_pad(images: List[Image], pad_mode="edge"):
     return MergedImage(merged_data, padded_images)
 
 
-def merge_col_scale(images: List[Image], x_size: int):
+def merge_col_scale(images: List[Image], x_size: Optional[int] = None):
     """ Combine images into a row, padding any hieight difference. """
+    if x_size is None:
+        x_size = max([i.x for i in images])
     resized_images = [i.resize(new_x=x_size) for i in images]
     merged_data = np.concatenate([i.data for i in resized_images], axis=0)
     return MergedImage(merged_data, resized_images)

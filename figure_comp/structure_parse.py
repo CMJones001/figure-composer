@@ -46,19 +46,57 @@ Outline
 
 """
 
-import yaml
+from dataclasses import dataclass, field
 from pathlib import Path
-from figure_comp.structure_comp import Row, Col
+from typing import List, Optional, Union
+
+import yaml
 from icecream import ic
-from typing import Optional, Union, List
-from dataclasses import dataclass
+from skimage import io
+
+from figure_comp.figure_rescale import Image
+from figure_comp.structure_comp import Col, Row
+
+Leaf = Union["ParsedStructure", str]
 
 
 @dataclass
 class ParsedStructure:
     struct: Union[Row, Col]
-    leaves: List["ParsedStructure", str]
-    options: dict
+    leaves: List[Leaf]
+    options: dict = field(default_factory=dict())
+
+    def as_tuple(self):
+        """ Recursively return the structure as tuple. """
+        parse_leaf = lambda l: l if isinstance(l, str) else l.as_tuple()
+        parsed_leaves = [parse_leaf(l) for l in self.leaves]
+        return (self.struct, parsed_leaves, self.options)
+
+    def assemble_figure(self, draft: bool = False):
+        """Turn the structure into a figure.
+
+        Parameters
+        ----------
+        draft: bool
+            If True then create placeholder image if an image cannot be found at the path,
+            otherwise raise an error.
+        """
+
+        def _parse_leaf(leaf: Leaf):
+            """If the leaf if a path then resolve then turn this into an image, otherwise
+            turn this into a structure."""
+            if isinstance(leaf, str):
+                image_path = Path(leaf).resolve()
+                if not image_path.is_file():
+                    if draft:
+                        raise NotImplementedError("Finish draft mode")
+                    else:
+                        raise FileNotFoundError(f"Unable to find image {leaf}")
+                return Image(io.imread(image_path), image_path)
+            else:
+                return leaf.assemble_figure(draft=draft)
+
+        return self.struct([_parse_leaf(leaf) for leaf in self.leaves], **self.options)
 
 
 def parse_file(file_path: Path):
@@ -71,11 +109,12 @@ def parse_file(file_path: Path):
 
 def _parse_section(sec):
     """ """
-    # Unwrap the list
+    # Unwrap the list, required for the top level
     if isinstance(sec, list):
         sec = sec[0]
 
-    # Lookup
+    # Lookup table between string and objects
+    # Might be overkill for now, but scales better
     structures = dict(Row=Row, Col=Col)
 
     for key, entry in sec.items():
@@ -83,7 +122,7 @@ def _parse_section(sec):
             structure = structures[key]
             leaves = _read_leaves(entry)
             options = _get_options(entry)
-            return (structure, leaves, options)
+            return ParsedStructure(structure, leaves, options)
 
 
 def _read_leaves(sec: dict):
@@ -105,12 +144,10 @@ def _get_options(sec: dict) -> dict:
     """ Return a dictionary of the options for this layer. """
     for row in sec:
         if isinstance(row, dict) and "options" in row:
+            if row["options"] is None:
+                raise ValueError("Empty option row parsed, check alignment.")
             return row["options"]
     return dict()
-
-
-def assemble_figure(structure):
-    """ Turn the yaml given structure into a figure. """
 
 
 if __name__ == "__main__":

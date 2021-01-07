@@ -29,6 +29,12 @@ from typing import Union, List
 class _Container:
     cont: List[Union["_Container", Image]]
 
+    def __getitem__(self, k):
+        """ Indexing the _Containter indexes the cont."""
+        if isinstance(k, int):
+            return self.cont[k]
+        raise TypeError("Index for _Container must be an integer")
+
     def run(self) -> fr.MergedImage:
         def activate(c: List[Union["_Container", Image]]):
             """ Resolve the nested containers or pass images through """
