@@ -15,6 +15,13 @@ numpy = "*"
 db-format = {editable = true,path = "/home/carl/Documents/Designs/pdb_format"}
 pudb = "*"
 figurecompositor = {editable = true,path = "."}
+matplotlib = "*"
+pdbpp = "*"
+scipy = "*"
+scikit-image = "*"
+hachoir = "*"
+pyyaml = "*"
+argh = "*"
 
 [requires]
 python_version = "3.8"
