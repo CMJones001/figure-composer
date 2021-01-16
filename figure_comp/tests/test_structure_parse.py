@@ -242,7 +242,7 @@ class TestAssembleStruct(unittest.TestCase):
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
         figure_test = sp._parse_section(test_config).assemble_figure()
 
-        # Test outer layer
+        # test outer layer
         self.assertTrue(isinstance(figure_test, sc.Row))
 
         # Middle column with single image

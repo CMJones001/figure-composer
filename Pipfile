@@ -21,6 +21,7 @@ scipy = "*"
 scikit-image = "*"
 hachoir = "*"
 pyyaml = "*"
+argh = "*"
 
 [requires]
 python_version = "3.8"

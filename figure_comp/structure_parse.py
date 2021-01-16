@@ -72,7 +72,7 @@ class ParsedStructure:
         parsed_leaves = [parse_leaf(l) for l in self.leaves]
         return (self.struct, parsed_leaves, self.options)
 
-    def assemble_figure(self, draft: bool = False):
+    def assemble_figure(self, draft: bool = False) -> Union[Row, Col]:
         """Turn the structure into a figure.
 
         Parameters
@@ -99,15 +99,19 @@ class ParsedStructure:
         return self.struct([_parse_leaf(leaf) for leaf in self.leaves], **self.options)
 
 
-def parse_file(file_path: Path):
+def parse_file(file_path: Path) -> ParsedStructure:
     """ Turn the contents of the given file into a nested Row/Col object. """
-    with open(file_path, "r") as f:
-        structure_dict = yaml.load(f, Loader=yaml.FullLoader)
+    try:
+        with open(file_path, "r") as f:
+            structure_dict = yaml.load(f, Loader=yaml.FullLoader)
+    except yaml.parser.ParserError:
+        print(f"Unable to parse configuration file: {file_path}")
+        raise SystemExit(1)
 
     return _parse_section(structure_dict)
 
 
-def _parse_section(sec):
+def _parse_section(sec) -> ParsedStructure:
     """ """
     # Unwrap the list, required for the top level
     if isinstance(sec, list):
