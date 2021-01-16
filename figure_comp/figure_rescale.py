@@ -245,8 +245,8 @@ def _get_test_ims() -> List[Path]:
     project_dir = Path(__file__).resolve().parent
     test_im_dir = project_dir / "tests/test_im/"
 
-    square_ims = (test_im_dir / "square").glob("*.png")
-    rectangle_ims = (test_im_dir / "wide").glob("*.png")
+    square_ims = test_im_dir.glob("square-im*.png")
+    rectangle_ims = test_im_dir.glob("rect-im*.png")
 
     return itertools.chain(square_ims, rectangle_ims)
 
