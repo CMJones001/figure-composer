@@ -158,7 +158,7 @@ def load_images(figure_paths: List[Path]) -> List[Image]:
     return images
 
 
-def merge_row_scale(images: List[Image], y_size: Optional[int] = None):
+def merge_row_scale(images: List[Image], y_size: Optional[int] = None) -> MergedImage:
     """Combine multiple images, while resizing them all to match the image in
     index ``fit_to_image``
 
@@ -182,7 +182,7 @@ def merge_row_pad(images: List[Image], pad_mode="edge"):
     return MergedImage(merged_data, padded_images)
 
 
-def merge_col_scale(images: List[Image], x_size: Optional[int] = None):
+def merge_col_scale(images: List[Image], x_size: Optional[int] = None) -> MergedImage:
     """ Combine images into a row, padding any hieight difference. """
     if x_size is None:
         x_size = max([i.x for i in images])
