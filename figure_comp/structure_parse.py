@@ -56,6 +56,7 @@ from skimage import io
 
 from figure_comp.figure_rescale import Image
 from figure_comp.structure_comp import Col, Row
+from figure_comp.coordinate_tracking import Pos
 
 Leaf = Union["ParsedStructure", str]
 
@@ -92,7 +93,8 @@ class ParsedStructure:
                         raise NotImplementedError("Finish draft mode")
                     else:
                         raise FileNotFoundError(f"Unable to find image {leaf}")
-                return Image(io.imread(image_path), image_path)
+                # return Image(io.imread(image_path), image_path)
+                return Pos(50, 50, path=image_path)
             else:
                 return leaf.assemble_figure(draft=draft)
 

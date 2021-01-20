@@ -19,10 +19,12 @@ This needs to be converted to some set of commands
 
 """
 
-from figure_comp.figure_rescale import Image
-import figure_comp.figure_rescale as fr
 from dataclasses import dataclass
-from typing import Union, List
+from typing import List, Union
+
+import figure_comp.figure_rescale as fr
+from figure_comp.figure_rescale import Image
+import figure_comp.coordinate_tracking as ct
 
 
 @dataclass
@@ -50,13 +52,8 @@ class Row(_Container):
 
     def __post_init__(self):
         self.scale = "scale"
-        self.args = dict(y_size=self.y_size)
-        self.merge_func = fr.merge_row_scale
-
-    def cmd(self):
-        args = ", ".join([f"{k}={v}" for k, v in self.args.items()])
-        cmd = f"merge_row_{self.scale}({self.cont}, {args})"
-        return cmd
+        self.args = dict()
+        self.merge_func = ct.merge_row
 
 
 @dataclass
@@ -65,13 +62,9 @@ class Col(_Container):
 
     def __post_init__(self):
         self.scale = "scale"
-        self.args = dict(x_size=self.x_size)
-        self.merge_func = fr.merge_col_scale
-
-    def cmd(self):
-        args = ", ".join([f"{k}={v}" for k, v in self.args.items()])
-        cmd = f"merge_col_{self.scale}({self.cont}, {args})"
-        return cmd
+        self.args = dict()
+        # self.merge_func = fr.merge_col_scale
+        self.merge_func = ct.merge_col
 
 
 if __name__ == "__main__":

@@ -2,16 +2,17 @@
 
 import tempfile
 import unittest
+from pathlib import Path
 
 import yaml
 from icecream import ic
-from pathlib import Path
-from skimage.io import imread
 from numpy.testing import assert_allclose
+from skimage.io import imread
 
+import figure_comp.coordinate_tracking as ct
+import figure_comp.figure_rescale as fr
 import figure_comp.structure_comp as sc
 import figure_comp.structure_parse as sp
-import figure_comp.figure_rescale as fr
 
 
 class TestYamlParsing(unittest.TestCase):
@@ -136,18 +137,18 @@ class TestAssembleStruct(unittest.TestCase):
           - {im_two}
         """
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
-        figure_test = sp._parse_section(test_config).assemble_figure()
 
-        ims = [imread(p) for p in [im_one, im_two]]
+        pos_test = sp._parse_section(test_config).assemble_figure()
+        pos_expected = [ct.Pos(50, 50, path=p.resolve()) for p in [im_one, im_two]]
 
         # Test outer layer
-        self.assertTrue(isinstance(figure_test, sc.Row))
+        self.assertTrue(isinstance(pos_test, sc.Row))
 
         # Test that arrays are the same
-        for im_test, im_expected in zip(figure_test.cont, ims):
-            assert_allclose(im_test.data, im_expected)
+        for im_test, im_expected in zip(pos_test.cont, pos_expected):
+            self.assertEqual(im_test, im_expected)
 
-        self.assertEqual(len(figure_test.cont), len(ims))
+        self.assertEqual(len(pos_test.cont), len(pos_expected))
 
     def test_nested_parse(self):
         """ Assemble an image from a nested structure. """
@@ -170,7 +171,7 @@ class TestAssembleStruct(unittest.TestCase):
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
         figure_test = sp._parse_section(test_config).assemble_figure()
 
-        ims = [fr.Image(imread(p), p) for p in im_paths]
+        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
 
         # Test outer layer
         self.assertTrue(isinstance(figure_test, sc.Row))
@@ -192,7 +193,7 @@ class TestAssembleStruct(unittest.TestCase):
             "tests/test_im/square-im-5.png",
         ]
         im_paths = [Path(p) for p in paths]
-        ims = [fr.Image(imread(p), p) for p in im_paths]
+        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
 
         test_yaml = f"""
         - Row:
@@ -231,7 +232,7 @@ class TestAssembleStruct(unittest.TestCase):
             "tests/test_im/square-im-5.png",
         ]
         im_paths = [Path(p) for p in paths]
-        ims = [fr.Image(imread(p), p) for p in im_paths]
+        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
 
         test_yaml = f"""
         - Row:
@@ -280,6 +281,8 @@ class TestAssembleStruct(unittest.TestCase):
             "tests/test_im/square-im-3.png",
             "tests/test_im/square-im-4.png",
             "tests/test_im/square-im-5.png",
+            "tests/test_im/rect-im-3.png",
+            "tests/test_im/rect-im-3.png",
         ]
         im_paths = [Path(p) for p in paths]
 
@@ -291,15 +294,18 @@ class TestAssembleStruct(unittest.TestCase):
             - options:
                 x_size: 750
           - {im_paths[4]}
+          - {im_paths[4]}
+          - {im_paths[4]}
           - Col:
             - {im_paths[2]}
             - {im_paths[3]}
+          - Col:
+            - {im_paths[2]}
+            - {im_paths[3]}
+            - {im_paths[6]}
           - options:
               y_size: 700
         """
-        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
-        figure_test = sp._parse_section(test_config).assemble_figure()
-
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
         figure_test = sp._parse_section(test_config).assemble_figure()
 
@@ -311,8 +317,70 @@ class TestAssembleStruct(unittest.TestCase):
 
         self.assertEqual(option_col_test, option_col_expected)
         self.assertEqual(option_row_test, option_row_expected)
+        assembled_fig = figure_test.run()
 
         # figure_test.run().save("/tmp/rect-plot.png")
+        #
+
+    def test_nested_three_level(self):
+        """ Read options in a nested element. """
+        paths = [
+            "tests/test_im/rect-im-1.png",
+            "tests/test_im/rect-im-2.png",
+            "tests/test_im/square-im-3.png",
+            "tests/test_im/square-im-4.png",
+            "tests/test_im/square-im-5.png",
+            "tests/test_im/rect-im-3.png",
+            "tests/test_im/rect-im-3.png",
+        ]
+        im_paths = [Path(p) for p in paths]
+
+        test_yaml = f"""
+        - Row:
+          - Col:
+            - {im_paths[0]}
+            - {im_paths[1]}
+            - Row:
+                - {im_paths[2]}
+                - {im_paths[3]}
+          - {im_paths[4]}
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        figure_test = sp._parse_section(test_config).assemble_figure()
+
+        assembled_fig = figure_test.run()
+        ic(assembled_fig)
+        assembled_fig.sketch("/tmp/assembled-three.png", label="short")
+
+    def test_nested_four_level(self):
+        """ Read options in a nested element. """
+        paths = [
+            "tests/test_im/rect-im-1.png",
+            "tests/test_im/rect-im-2.png",
+            "tests/test_im/square-im-3.png",
+            "tests/test_im/square-im-4.png",
+            "tests/test_im/square-im-5.png",
+            "tests/test_im/rect-im-3.png",
+            "tests/test_im/rect-im-3.png",
+        ]
+        im_paths = [Path(p) for p in paths]
+
+        test_yaml = f"""
+        - Row:
+          - Col:
+            - {im_paths[0]}
+            - Row:
+                - {im_paths[0]}
+                - Col:
+                    - {im_paths[0]}
+                    - {im_paths[2]}
+          - {im_paths[4]}
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        figure_test = sp._parse_section(test_config).assemble_figure()
+
+        assembled_fig = figure_test.run()
+        assembled_fig.sketch("/tmp/assembled.png", label="short")
 
     def test_simple_parse_flow(self):
         """ Read options in the simplest case with the space saving format. """

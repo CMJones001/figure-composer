@@ -101,8 +101,7 @@ class Pos:
     def rescale(self, scale, about: Optional[float] = None):
         """Rescale all images by a factor.
 
-        The starting points are rescaled as well, about a given point, typically about the
-        minimium of the x positions of the included images.
+        The starting points are uneffected
         """
         self.dx = self.dx * scale
         self.dy = self.dy * scale
@@ -129,6 +128,20 @@ class Pos:
                 f"Division not supported between PosArray and {type(other)}"
             )
         return self.stack_below(other)
+
+    def __eq__(self, other):
+        if not isinstance(other, Pos):
+            return False
+        return (
+            self.x == other.x
+            and self.y == other.y
+            and self.dx == other.dx
+            and self.dy == other.dy
+            and self.path == other.path
+        )
+
+    def __repr__(self):
+        return f"Pos at {self.x,self.y}, size {self.dx,self.dy} pointing to {self.path}"
 
 
 class PosArray(Pos):
@@ -160,7 +173,7 @@ class PosArray(Pos):
 
     @property
     def x_max(self):
-        """ The smallest x_coordinate in the array. """
+        """ The largest x_coordinate in the array. """
         return max(map(lambda p: p.x_max, self.arr))
 
     @property
@@ -170,7 +183,7 @@ class PosArray(Pos):
 
     @property
     def y_max(self):
-        """ The smallest y_coordinate in the array. """
+        """ The largest y_coordinate in the array. """
         return max(map(lambda p: p.y_max, self.arr))
 
     def rescale(self, scale, about: Optional[float] = None):
@@ -203,18 +216,36 @@ class PosArray(Pos):
         aspect = x_range / y_range
         fig, ax = pt.create_axes(1, aspect=aspect, fig_width=6)
 
-        for num, p in enumerate(self):
-            ax.add_patch(
-                Rectangle(
-                    [p.x, p.y], p.dx, p.dy, lw=4, ec="black", fc="lightgrey", alpha=0.6
+        def plot_pos_array(p_array: PosArray, num_offset=0):
+            """ Plot all of the leaves within a PosArray. """
+            for num, p in enumerate(p_array):
+                # If p is a PosArray then pass it again
+                if isinstance(p, PosArray):
+                    num_offset += plot_pos_array(p, num + num_offset)
+                    continue
+
+                #  Else plot the outline of the figure
+                ax.add_patch(
+                    Rectangle(
+                        [p.x, p.y],
+                        p.dx,
+                        p.dy,
+                        lw=4,
+                        ec="black",
+                        fc="lightgrey",
+                        alpha=0.6,
+                    )
                 )
-            )
-            if label:
-                pos = (p.x + p.dx / 2, p.y + p.dy / 2)
-                if not p.path:
-                    ax.annotate(f"{chr(num+0x41)}", pos, ha="center", va="center")
-                else:
-                    ax.annotate(p.path, pos, ha="center", va="center")
+                if label:
+                    pos = (p.x + p.dx / 2, p.y + p.dy / 2)
+                    if not p.path or label == "short":
+                        ax.annotate(f"{num+num_offset}", pos, ha="center", va="center")
+                    else:
+                        ax.annotate(p.path.stem, pos, ha="center", va="center")
+            # Ensure that we keep track of the final index
+            return num
+
+        plot_pos_array(self)
 
         pad = 0.1
         ax.set_xlim(self.x_min - pad * x_range, self.x_max + pad * x_range)
@@ -222,6 +253,9 @@ class PosArray(Pos):
         ax.invert_yaxis()
         ax.set_aspect("equal", "box")
         pt.save(save_path)
+
+    def __repr__(self):
+        return "PosArray: " + "\n".join([p.__repr__() for p in self])
 
 
 def merge_row(pos_list: List[PosArray]) -> PosArray:

@@ -21,7 +21,7 @@ class TestSimpleLayout(unittest.TestCase):
         test_data = [
             np.ones([3, 3, 3]) * i * 200 // n_repeats for i in range(n_repeats)
         ]
-        test_images = [fr.Image(t, path=".") for t in test_data]
+        test_images = [fr.Image(t, path=None) for t in test_data]
 
         row = sc.Row(test_images, y_size=block_height)
         merged_im = row.run()
@@ -39,7 +39,7 @@ class TestSimpleLayout(unittest.TestCase):
         test_data = [
             np.ones([3, 3 * aspect, 3]) * i * 200 // n_repeats for i in range(n_repeats)
         ]
-        test_images = [fr.Image(t, path=".") for t in test_data]
+        test_images = [fr.Image(t, path=None) for t in test_data]
 
         row = sc.Row(test_images, y_size=block_height)
         merged_im = row.run()
@@ -59,10 +59,10 @@ class TestSimpleLayout(unittest.TestCase):
         test_data = [
             np.ones([3, 3, 3]) * i * 200 // n_repeats for i in range(n_repeats)
         ]
-        test_images = [fr.Image(t, path=".") for t in test_data]
+        test_images = [fr.Image(t, path=None) for t in test_data]
 
         test_images.append(
-            sc.Row([fr.Image(np.zeros([3, 3, 3]), path=".")], y_size=block_height),
+            sc.Row([fr.Image(np.zeros([3, 3, 3]), path=None)], y_size=block_height),
         )
 
         row = sc.Row(test_images, y_size=block_height)
@@ -79,7 +79,7 @@ class TestSimpleLayout(unittest.TestCase):
         test_data = [
             np.ones([3, 3, 3]) * i * 200 // n_repeats for i in range(n_repeats)
         ]
-        test_images = [fr.Image(t, path=".") for t in test_data]
+        test_images = [fr.Image(t, path=None) for t in test_data]
 
         col = sc.Col(test_images, x_size=block_width)
         merged_im = col.run()
@@ -97,7 +97,7 @@ class TestSimpleLayout(unittest.TestCase):
         test_data = [
             np.ones([3, 3 * aspect, 3]) * i * 200 // n_repeats for i in range(n_repeats)
         ]
-        test_images = [fr.Image(t, path=".") for t in test_data]
+        test_images = [fr.Image(t, path=None) for t in test_data]
 
         col = sc.Col(test_images, x_size=block_width)
         merged_im = col.run()
@@ -122,8 +122,8 @@ class TestSimpleLayout(unittest.TestCase):
         col_data = [np.ones([3, 3, 3]) * i * 100 for i in range(n_row)]
 
         # Turn these into an ``Image``
-        row_im = [fr.Image(t, path=".") for t in row_data]
-        col_im = [fr.Image(t, path=".") for t in col_data]
+        row_im = [fr.Image(t, path=None) for t in row_data]
+        col_im = [fr.Image(t, path=None) for t in col_data]
 
         # Merge the images into structures
         col = sc.Col(col_im, x_size=block_height)
@@ -155,9 +155,9 @@ class TestSimpleLayout(unittest.TestCase):
         out_col_data = [np.ones([3, 3, 3]) * i * 250 // n_col for i in range(n_out_col)]
 
         # Turn these into an ``Image``
-        col_im = [fr.Image(t, path=".") for t in col_data]
-        row_im = [fr.Image(t, path=".") for t in row_data]
-        out_col_im = [fr.Image(t, path=".") for t in out_col_data]
+        col_im = [fr.Image(t, path=None) for t in col_data]
+        row_im = [fr.Image(t, path=None) for t in row_data]
+        out_col_im = [fr.Image(t, path=None) for t in out_col_data]
 
         # Merge the images into structures
         col = sc.Col(col_im, x_size=block_height)
@@ -209,9 +209,9 @@ class TestSimpleLayout(unittest.TestCase):
         col_data = [np.ones([3, 3, 3]) * i * 250 // n_row for i in range(n_row)]
 
         # Turn these into an ``Image``
-        row_one_im = [fr.Image(t, path=".") for t in row_one_data]
-        row_two_im = [fr.Image(t, path=".") for t in row_two_data]
-        col_im = [fr.Image(t, path=".") for t in col_data]
+        row_one_im = [fr.Image(t, path=None) for t in row_one_data]
+        row_two_im = [fr.Image(t, path=None) for t in row_two_data]
+        col_im = [fr.Image(t, path=None) for t in col_data]
 
         # Merge the images into structures
         row_one = sc.Row(row_one_im, y_size=500)
