@@ -52,9 +52,7 @@ from typing import List, Optional, Union
 
 import yaml
 from icecream import ic
-from skimage import io
 
-from figure_comp.figure_rescale import Image
 from figure_comp.structure_comp import Col, Row
 from figure_comp.coordinate_tracking import Pos
 
