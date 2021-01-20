@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass, field
+from functools import reduce
+from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
+from icecream import ic
 from matplotlib.patches import Rectangle
 
 import figure_comp.plot_tools as pt
-from icecream import ic
 
 
 @dataclass
@@ -16,6 +18,8 @@ class Pos:
     y: float
     dx: float
     dy: float
+    path: Path = None
+    options: dict = field(default_factory=lambda: dict())
 
     def __post_init__(self):
         if self.dx < 0 or self.dy < 0:
@@ -24,7 +28,7 @@ class Pos:
 
 @dataclass
 class PosArray:
-    arr: Tuple = field(default_factory=lambda: [])
+    arr: Tuple[Pos] = field(default_factory=lambda: [])
 
     def append(self, other):
         if not isinstance(other, (PosArray)):
@@ -53,6 +57,10 @@ class PosArray:
         return max(map(lambda p: p.x + p.dx, self.arr))
 
     @property
+    def x_range(self):
+        return self.x_max - self.x_min
+
+    @property
     def y_min(self):
         """ The smallest y_coordinate in the array. """
         return min(map(lambda p: p.y, self.arr))
@@ -62,16 +70,17 @@ class PosArray:
         """ The smallest y_coordinate in the array. """
         return max(map(lambda p: p.y + p.dy, self.arr))
 
+    @property
+    def y_range(self):
+        return self.y_max - self.y_min
+
     def stack_right(self, other: "PosArray") -> "PosArray":
         """Add a PosArray to the right of current.
 
         This scales the second PosArray to fit the current.
         """
         x_offset = self.x_max - other.x_min
-
-        y_range_self = self.y_max - self.y_min
-        y_range_other = other.y_max - other.y_min
-        scale_factor = y_range_self / y_range_other
+        scale_factor = self.y_range / other.y_range
 
         other.shift_x(x_offset)
         other.rescale(scale_factor)
@@ -83,10 +92,7 @@ class PosArray:
         This scales the second PosArray to fit the current.
         """
         y_offset = self.y_max - other.y_min
-
-        x_range_self = self.x_max - self.x_min
-        x_range_other = other.x_max - other.x_min
-        scale_factor = x_range_self / x_range_other
+        scale_factor = self.x_range / other.x_range
 
         other.shift_y(y_offset)
         other.rescale(scale_factor)
@@ -98,15 +104,12 @@ class PosArray:
         The starting points are rescaled as well, about a given point, typically about the
         minimium of the x positions of the included images.
         """
-        min_x = min(map(lambda p: p.x, self.arr))
-        min_y = min(map(lambda p: p.y, self.arr))
-
         for p in self.arr:
-            from_scale_point_x = p.x - min_x
-            from_scale_point_y = p.y - min_y
+            from_scale_point_x = p.x - self.x_min
+            from_scale_point_y = p.y - self.y_min
 
-            p.x = min_x + from_scale_point_x * scale
-            p.y = min_y + from_scale_point_y * scale
+            p.x = self.x_min + from_scale_point_x * scale
+            p.y = self.y_min + from_scale_point_y * scale
 
             p.dx = p.dx * scale
             p.dy = p.dy * scale
@@ -150,11 +153,16 @@ class PosArray:
 
         for num, p in enumerate(self):
             ax.add_patch(
-                Rectangle([p.x, p.y], p.dx, p.dy, lw=4, ec="black", fc="lightgrey")
+                Rectangle(
+                    [p.x, p.y], p.dx, p.dy, lw=4, ec="black", fc="lightgrey", alpha=0.6
+                )
             )
             if label:
                 pos = (p.x + p.dx / 2, p.y + p.dy / 2)
-                ax.annotate(f"{chr(num+0x41)}", pos, ha="center", va="center")
+                if not p.path:
+                    ax.annotate(f"{chr(num+0x41)}", pos, ha="center", va="center")
+                else:
+                    ax.annotate(p.path, pos, ha="center", va="center")
 
         pad = 0.1
         ax.set_xlim(self.x_min - pad * x_range, self.x_max + pad * x_range)
@@ -162,3 +170,21 @@ class PosArray:
         ax.invert_yaxis()
         ax.set_aspect("equal", "box")
         pt.save(save_path)
+
+
+def merge_row(pos_list: List[PosArray]) -> PosArray:
+    """ Merge all of the given `PosArray` into a column. """
+
+    def merge_func(x, y):
+        return x.stack_right(y)
+
+    return reduce(merge_func, pos_list)
+
+
+def merge_col(pos_list: List[PosArray]) -> PosArray:
+    """ Merge all of the given `PosArray` into a row. """
+
+    def merge_func(x, y):
+        return x.stack_down(y)
+
+    return reduce(merge_func, pos_list)

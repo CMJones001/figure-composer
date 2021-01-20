@@ -2,19 +2,23 @@
 
 import itertools
 import unittest
+from pathlib import Path
+from functools import reduce
 
 import numpy as np
+from icecream import ic
+from numpy.testing import assert_allclose
+
 from figure_comp.coordinate_tracking import Pos, PosArray
 from figure_comp.figure_rescale import Image
 from figure_comp.structure_comp import Col, Row
-from icecream import ic
-from numpy.testing import assert_allclose
+import figure_comp.coordinate_tracking as ct
 
 
 def create_row_array(x_size=50, num=5, x_offset=0, y_offset=0) -> PosArray:
     """ Create a simple row of images that are ``x_size`` wide. """
     x_pos = np.arange(0, num) * x_size + x_offset
-    pos_arr = PosArray([Pos(x, y_offset, x_size, x_size) for x in x_pos])
+    pos_arr = PosArray([Pos(x, y_offset, x_size, x_size, path=None) for x in x_pos])
     return pos_arr
 
 
@@ -25,7 +29,28 @@ def create_pos_array(
     x_pos = np.arange(0, x_num) * x_size + x_offset
     y_pos = np.arange(0, y_num) * y_size + y_offset
     pos_arr = PosArray(
-        [Pos(x, y, x_size, x_size) for x, y in itertools.product(x_pos, y_pos)]
+        [
+            Pos(x, y, x_size, y_size, path=None)
+            for x, y in itertools.product(x_pos, y_pos)
+        ]
+    )
+    return pos_arr
+
+
+def create_pos_array_opts(
+    x_size=50, y_size=50, x_num=1, y_num=1, paths=None, opts=None
+) -> PosArray:
+    """ General creation of PosArray. """
+    x_pos = np.arange(0, x_num) * x_size
+    y_pos = np.arange(0, y_num) * y_size
+
+    paths = [] if paths is None else paths
+    opts = {} if opts is None else opts
+    x_y_prod = itertools.product(x_pos, y_pos)
+    full_iter = itertools.zip_longest(x_y_prod, paths, opts)
+
+    pos_arr = PosArray(
+        [Pos(x, y, x_size, y_size, path, opts) for (x, y), path, opts in full_iter]
     )
     return pos_arr
 
@@ -268,11 +293,35 @@ class TestStacking(unittest.TestCase):
 
         x_max_expected = 50 * (1.0 + count_left / count_right + count_left * count_row)
         x_max_test = pos_arr.x_max
-        self.assertEqual(x_max_test, x_max_expected)
+        assert_allclose(x_max_test, x_max_expected)
 
         y_max_expected = 50 * (count_left)
         y_max_test = pos_arr.y_max
-        self.assertEqual(y_max_test, y_max_expected)
+        assert_allclose(y_max_test, y_max_expected)
+
+        return
+
+    def test_col_three_add_reduce(self):
+        """ Check adding of two coulmn shapes and a row using operator overloading. """
+        count_right = 4
+        col_right = create_pos_array(y_num=count_right)
+
+        count_left = 3
+        col_left = create_pos_array(y_num=count_left)
+
+        count_row = 2
+        row = create_pos_array(x_num=count_row)
+
+        structs = [col_left, col_right, row]
+        pos_arr = ct.merge_row(structs)
+
+        x_max_expected = 50 * (1.0 + count_left / count_right + count_left * count_row)
+        x_max_test = pos_arr.x_max
+        assert_allclose(x_max_test, x_max_expected)
+
+        y_max_expected = 50 * (count_left)
+        y_max_test = pos_arr.y_max
+        assert_allclose(y_max_test, y_max_expected)
 
         return
 
@@ -288,32 +337,45 @@ class TestStacking(unittest.TestCase):
 
         x_max_expected = 50 * (count_top)
         x_max_test = pos_arr.x_max
-        self.assertEqual(x_max_test, x_max_expected)
+        assert_allclose(x_max_test, x_max_expected)
 
         y_max_expected = 50 * (1 + count_top / count_bottom)
         y_max_test = pos_arr.y_max
-        self.assertEqual(y_max_test, y_max_expected)
+        assert_allclose(y_max_test, y_max_expected)
         return
 
     def test_row_two_add_alt(self):
         """ Check adding of two row shapes. """
-        count_top = 2
+        count_top = 5
         row_top = create_pos_array(x_num=count_top)
 
         count_bottom = 3
         row_bottom = create_pos_array(x_num=count_bottom)
 
         pos_arr = row_top / row_bottom
-        pos_arr.sketch(label=True)
 
         x_max_expected = 50 * (count_top)
         x_max_test = pos_arr.x_max
-        self.assertEqual(x_max_test, x_max_expected)
+        assert_allclose(x_max_test, x_max_expected)
 
         y_max_expected = 50 * (1 + count_top / count_bottom)
         y_max_test = pos_arr.y_max
-        self.assertEqual(y_max_test, y_max_expected)
+        assert_allclose(y_max_test, y_max_expected)
         return
+
+
+class TestPopulated(unittest.TestCase):
+    """ Saving metadata and images into the structure. """
+
+    def test_simple_merge_paths(self):
+        """ Test the merging of items with paths """
+        n_cols = 3
+        paths_expected = [Path(f"/tmp/img-{i}.png") for i in range(n_cols)]
+        pos_arr = create_pos_array_opts(x_size=40, y_num=n_cols, paths=paths_expected)
+
+        paths_test = [p.path for p in pos_arr]
+        self.assertEqual(paths_test, paths_expected)
+        pos_arr.sketch(label=True)
 
 
 if __name__ == "__main__":
