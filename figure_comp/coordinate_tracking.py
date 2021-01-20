@@ -12,49 +12,49 @@ from matplotlib.patches import Rectangle
 import figure_comp.plot_tools as pt
 
 
-@dataclass
 class Pos:
-    x: float
-    y: float
-    dx: float
-    dy: float
-    path: Path = None
-    options: dict = field(default_factory=lambda: dict())
+    def __init__(
+        self,
+        dx: float,
+        dy: float,
+        x: float = 0.0,
+        y: float = 0.0,
+        path: Path = None,
+        options=None,
+    ):
+        self.dx = dx
+        self.dy = dy
+        self.x = x
+        self.y = y
+        self.path = Path(path) if path is not None else None
+        self.options = options if path is not None else dict()
+
+    def append(self, other):
+        if not isinstance(other, (Pos, PosArray)):
+            raise TypeError("Unable to append non Pos type")
+        return PosArray([self, other])
 
     def __post_init__(self):
         if self.dx < 0 or self.dy < 0:
             raise ValueError("Pos figure widths must be positive")
 
-
-@dataclass
-class PosArray:
-    arr: Tuple[Pos] = field(default_factory=lambda: [])
-
-    def append(self, other):
-        if not isinstance(other, (PosArray)):
-            raise TypeError("Unable to append non Pos type")
-        self.arr = self.arr + other.arr
-        return self
-
     def shift_x(self, x_move):
         """ Move all items right by the given amount. """
-        for p in self.arr:
-            p.x += x_move
+        self.x += x_move
 
     def shift_y(self, y_move):
         """ Move all items down by the given amount. """
-        for p in self.arr:
-            p.y += y_move
+        self.y += y_move
 
     @property
     def x_min(self):
         """ The smallest x_coordinate in the array. """
-        return min(map(lambda p: p.x, self.arr))
+        return self.x
 
     @property
     def x_max(self):
         """ The smallest x_coordinate in the array. """
-        return max(map(lambda p: p.x + p.dx, self.arr))
+        return self.x + self.dx
 
     @property
     def x_range(self):
@@ -63,12 +63,12 @@ class PosArray:
     @property
     def y_min(self):
         """ The smallest y_coordinate in the array. """
-        return min(map(lambda p: p.y, self.arr))
+        return self.y
 
     @property
     def y_max(self):
         """ The smallest y_coordinate in the array. """
-        return max(map(lambda p: p.y + p.dy, self.arr))
+        return self.y + self.dy
 
     @property
     def y_range(self):
@@ -104,21 +104,14 @@ class PosArray:
         The starting points are rescaled as well, about a given point, typically about the
         minimium of the x positions of the included images.
         """
-        for p in self.arr:
-            from_scale_point_x = p.x - self.x_min
-            from_scale_point_y = p.y - self.y_min
-
-            p.x = self.x_min + from_scale_point_x * scale
-            p.y = self.y_min + from_scale_point_y * scale
-
-            p.dx = p.dx * scale
-            p.dy = p.dy * scale
+        self.dx = self.dx * scale
+        self.dy = self.dy * scale
 
     def __add__(self, other):
         """If given a PosArray then stack on the right, otherwise shift by
         (x, y) coordinates.
         """
-        if isinstance(other, PosArray):
+        if isinstance(other, (Pos, PosArray)):
             return self.stack_right(other)
         x, y = other
         self.shift_x(x)
@@ -131,11 +124,70 @@ class PosArray:
 
     def __truediv__(self, other):
         """ Shorthand for stack below. """
-        if not isinstance(other, PosArray):
+        if not isinstance(other, (PosArray, Pos)):
             raise TypeError(
                 f"Division not supported between PosArray and {type(other)}"
             )
         return self.stack_below(other)
+
+
+class PosArray(Pos):
+    def __init__(self, arr: Tuple[Pos]):
+        self.arr = arr if arr is not None else []
+
+    def append(self, other):
+        if isinstance(other, Pos):
+            self.arr.append(other)
+            return self
+        elif isinstance(other, PosArray):
+            self.arr = self.arr + other.arr
+            return self
+        if not isinstance(other, (Pos, PosArray)):
+            raise TypeError("Unable to append non Pos type")
+
+    def shift_x(self, x_move):
+        """ Move all items right by the given amount. """
+        [p.shift_x(x_move) for p in self.arr]
+
+    def shift_y(self, y_move):
+        """ Move all items down by the given amount. """
+        [p.shift_y(y_move) for p in self.arr]
+
+    @property
+    def x_min(self):
+        """ The smallest x_coordinate in the array. """
+        return min(map(lambda p: p.x_min, self.arr))
+
+    @property
+    def x_max(self):
+        """ The smallest x_coordinate in the array. """
+        return max(map(lambda p: p.x_max, self.arr))
+
+    @property
+    def y_min(self):
+        """ The smallest y_coordinate in the array. """
+        return min(map(lambda p: p.y_min, self.arr))
+
+    @property
+    def y_max(self):
+        """ The smallest y_coordinate in the array. """
+        return max(map(lambda p: p.y_max, self.arr))
+
+    def rescale(self, scale, about: Optional[float] = None):
+        """Rescale all images by a factor.
+
+        The starting points are rescaled as well, about a given point, typically about the
+        minimium of the x positions of the included images.
+        """
+        for p in self.arr:
+            from_scale_point_x = p.x - self.x_min
+            from_scale_point_y = p.y - self.y_min
+
+            p.x = self.x_min + from_scale_point_x * scale
+            p.y = self.y_min + from_scale_point_y * scale
+
+            p.dx = p.dx * scale
+            p.dy = p.dy * scale
 
     def __len__(self):
         return self.arr.__len__()
@@ -185,6 +237,6 @@ def merge_col(pos_list: List[PosArray]) -> PosArray:
     """ Merge all of the given `PosArray` into a row. """
 
     def merge_func(x, y):
-        return x.stack_down(y)
+        return x.stack_below(y)
 
     return reduce(merge_func, pos_list)

@@ -18,7 +18,7 @@ import figure_comp.coordinate_tracking as ct
 def create_row_array(x_size=50, num=5, x_offset=0, y_offset=0) -> PosArray:
     """ Create a simple row of images that are ``x_size`` wide. """
     x_pos = np.arange(0, num) * x_size + x_offset
-    pos_arr = PosArray([Pos(x, y_offset, x_size, x_size, path=None) for x in x_pos])
+    pos_arr = PosArray([Pos(x_size, x_size, x, y_offset, path=None) for x in x_pos])
     return pos_arr
 
 
@@ -30,7 +30,7 @@ def create_pos_array(
     y_pos = np.arange(0, y_num) * y_size + y_offset
     pos_arr = PosArray(
         [
-            Pos(x, y, x_size, y_size, path=None)
+            Pos(x_size, y_size, x, y, path=None)
             for x, y in itertools.product(x_pos, y_pos)
         ]
     )
@@ -50,7 +50,7 @@ def create_pos_array_opts(
     full_iter = itertools.zip_longest(x_y_prod, paths, opts)
 
     pos_arr = PosArray(
-        [Pos(x, y, x_size, y_size, path, opts) for (x, y), path, opts in full_iter]
+        [Pos(x_size, y_size, x, y, path, opts) for (x, y), path, opts in full_iter]
     )
     return pos_arr
 
@@ -364,6 +364,81 @@ class TestStacking(unittest.TestCase):
         return
 
 
+class TestPosCombine(unittest.TestCase):
+    """ Test the merging of the Pos and PosArray"""
+
+    def test_pos_comp_row(self):
+        """ Merging of multiple pos into a row. """
+        count_row = 3
+        positions = [Pos(50, 50) for i in range(count_row)]
+        pos_arr = ct.merge_row(positions)
+
+        len_test = len(pos_arr)
+        len_expected = count_row
+        self.assertEqual(len_test, len_expected)
+
+        pos_expected = np.arange(count_row) * 50
+        pos_test = [p.x for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+    def test_pos_comp_col(self):
+        """ Merging of multiple pos into a col. """
+        count_row = 3
+        positions = [Pos(50, 50) for i in range(count_row)]
+        pos_arr = ct.merge_col(positions)
+
+        len_test = len(pos_arr)
+        len_expected = count_row
+        self.assertEqual(len_test, len_expected)
+
+        pos_expected = np.arange(count_row) * 50
+        pos_test = [p.y for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+        pos_expected = np.arange(count_row) * 0
+        pos_test = [p.x for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+    def test_pos_comp_merged(self):
+        """ Merging of nested positions. """
+        count_row = 3
+        positions = [Pos(50, 50) for i in range(count_row)]
+        pos_arr = ct.merge_row(
+            [ct.merge_col([positions[0], positions[1]]), positions[2]]
+        )
+
+        len_test = len(pos_arr)
+        len_expected = count_row
+        self.assertEqual(len_test, len_expected)
+
+        pos_expected = [50, 50, 100]
+        pos_test = [p.dy for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+        pos_expected = [50, 50, 100]
+        pos_test = [p.dx for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+    def test_pos_alt(self):
+        """ Merging of multiple pos using the short notations. """
+        count_row = 4
+
+        pos_arr = ((Pos(50, 50) / Pos(50, 50)) + Pos(50, 50)) / Pos(100, 50)
+        pos_arr.sketch()
+
+        len_test = len(pos_arr)
+        len_expected = count_row
+        self.assertEqual(len_test, len_expected)
+
+        pos_expected = [50, 50, 100, 50 * 3 / 2]
+        pos_test = [p.dy for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+        pos_expected = [50, 50, 100, 100 * 3 / 2]
+        pos_test = [p.dx for p in pos_arr]
+        assert_allclose(pos_test, pos_expected)
+
+
 class TestPopulated(unittest.TestCase):
     """ Saving metadata and images into the structure. """
 
@@ -375,7 +450,6 @@ class TestPopulated(unittest.TestCase):
 
         paths_test = [p.path for p in pos_arr]
         self.assertEqual(paths_test, paths_expected)
-        pos_arr.sketch(label=True)
 
 
 if __name__ == "__main__":
