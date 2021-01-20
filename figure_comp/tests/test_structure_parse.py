@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 
-import tempfile
 import unittest
 from pathlib import Path
 
 import yaml
-from icecream import ic
 from numpy.testing import assert_allclose
-from skimage.io import imread
 
 import figure_comp.coordinate_tracking as ct
-import figure_comp.figure_rescale as fr
 import figure_comp.structure_comp as sc
 import figure_comp.structure_parse as sp
+from figure_comp.tests.test_coordinate_tracking import get_coords
 
 
 class TestYamlParsing(unittest.TestCase):
@@ -32,7 +29,7 @@ class TestYamlParsing(unittest.TestCase):
 
         self.assertTrue("Row" in test_config)
 
-        # Any strings are persumed to be file paths
+        # Any strings are presumed to be file paths
         row_info = test_config["Row"]
         paths_test = [r for r in row_info if isinstance(r, str)]
         paths_expected = ["/path/one", "/path/two"]
@@ -349,7 +346,6 @@ class TestAssembleStruct(unittest.TestCase):
         figure_test = sp._parse_section(test_config).assemble_figure()
 
         assembled_fig = figure_test.run()
-        ic(assembled_fig)
         assembled_fig.sketch("/tmp/assembled-three.png", label="short")
 
     def test_nested_four_level(self):
@@ -396,6 +392,43 @@ class TestAssembleStruct(unittest.TestCase):
         figure_test = sp._parse_section(test_config).assemble_figure()
 
         self.assertEqual(figure_test.y_size, 600)
+
+    def test_tri_array_merge(self):
+        """ Investigate rescaling of PosArray """
+        test_yaml = """
+        - Row:
+          - 1.png
+          - Col:
+            - 2.png
+            - Row:
+              - 3.png
+              - 4.png
+        """
+
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        figure_structure = sp._parse_section(test_config).assemble_figure()
+        pos_arr = figure_structure.run()
+
+        # Widths of the squares in decreasing size
+        full_width = 50
+        med_width = 50 * (2 / 3)
+        sma_width = med_width / 2
+
+        x_test = get_coords(pos_arr, "x")
+        x_expected = [0, full_width, full_width, full_width + sma_width]
+        assert_allclose(x_test, x_expected)
+
+        y_test = get_coords(pos_arr, "y")
+        y_expected = [0, 0, med_width, med_width]
+        assert_allclose(y_test, y_expected)
+
+        dx_test = get_coords(pos_arr, "dx")
+        dx_expected = [full_width, med_width, sma_width, sma_width]
+        assert_allclose(dx_test, dx_expected)
+
+        dy_test = get_coords(pos_arr, "dy")
+        dy_expected = [full_width, med_width, sma_width, sma_width]
+        assert_allclose(dy_test, dy_expected)
 
 
 if __name__ == "__main__":

@@ -98,7 +98,7 @@ class Pos:
         other.rescale(scale_factor)
         return self.append(other)
 
-    def rescale(self, scale, about: Optional[float] = None):
+    def rescale(self, scale):
         """Rescale all images by a factor.
 
         The starting points are uneffected
@@ -143,6 +143,11 @@ class Pos:
     def __repr__(self):
         return f"Pos at {self.x,self.y}, size {self.dx,self.dy} pointing to {self.path}"
 
+    @property
+    def is_array(self):
+        """ Shorthand function that is more extensible than isinstance(self, PosArray). """
+        return False
+
 
 class PosArray(Pos):
     def __init__(self, arr: Tuple[Pos]):
@@ -186,21 +191,28 @@ class PosArray(Pos):
         """ The largest y_coordinate in the array. """
         return max(map(lambda p: p.y_max, self.arr))
 
-    def rescale(self, scale, about: Optional[float] = None):
+    def rescale(self, scale):
         """Rescale all images by a factor.
 
         The starting points are rescaled as well, about a given point, typically about the
         minimium of the x positions of the included images.
         """
-        for p in self.arr:
-            from_scale_point_x = p.x - self.x_min
-            from_scale_point_y = p.y - self.y_min
 
-            p.x = self.x_min + from_scale_point_x * scale
-            p.y = self.y_min + from_scale_point_y * scale
+        def rescale_pos_arr(pos_arr):
+            for p in pos_arr:
+                if p.is_array:
+                    # Recursively resize a pos array
+                    rescale_pos_arr(p)
+                    continue
+                from_scale_point_x = p.x_min - self.x_min
+                from_scale_point_y = p.y_min - self.y_min
 
-            p.dx = p.dx * scale
-            p.dy = p.dy * scale
+                p.x = self.x_min + from_scale_point_x * scale
+                p.y = self.y_min + from_scale_point_y * scale
+
+                p.rescale(scale)
+
+        rescale_pos_arr(self.arr)
 
     def __len__(self):
         return self.arr.__len__()
@@ -216,26 +228,18 @@ class PosArray(Pos):
         aspect = x_range / y_range
         fig, ax = pt.create_axes(1, aspect=aspect, fig_width=6)
 
+        rect_kwargs = dict(lw=4, alpha=0.6, ec="black", fc="lightgrey")
+
         def plot_pos_array(p_array: PosArray, num_offset=0):
             """ Plot all of the leaves within a PosArray. """
             for num, p in enumerate(p_array):
                 # If p is a PosArray then pass it again
-                if isinstance(p, PosArray):
+                if p.is_array:
                     num_offset += plot_pos_array(p, num + num_offset)
                     continue
 
                 #  Else plot the outline of the figure
-                ax.add_patch(
-                    Rectangle(
-                        [p.x, p.y],
-                        p.dx,
-                        p.dy,
-                        lw=4,
-                        ec="black",
-                        fc="lightgrey",
-                        alpha=0.6,
-                    )
-                )
+                ax.add_patch(Rectangle([p.x, p.y], p.dx, p.dy, **rect_kwargs))
                 if label:
                     pos = (p.x + p.dx / 2, p.y + p.dy / 2)
                     if not p.path or label == "short":
@@ -256,6 +260,11 @@ class PosArray(Pos):
 
     def __repr__(self):
         return "PosArray: " + "\n".join([p.__repr__() for p in self])
+
+    @property
+    def is_array(self):
+        """ Shorthand function that is more extensible than isinstance(self, PosArray). """
+        return True
 
 
 def merge_row(pos_list: List[PosArray]) -> PosArray:

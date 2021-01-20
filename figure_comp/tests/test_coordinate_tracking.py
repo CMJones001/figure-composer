@@ -3,15 +3,11 @@
 import itertools
 import unittest
 from pathlib import Path
-from functools import reduce
 
 import numpy as np
-from icecream import ic
 from numpy.testing import assert_allclose
 
 from figure_comp.coordinate_tracking import Pos, PosArray
-from figure_comp.figure_rescale import Image
-from figure_comp.structure_comp import Col, Row
 import figure_comp.coordinate_tracking as ct
 
 
@@ -53,6 +49,17 @@ def create_pos_array_opts(
         [Pos(x_size, y_size, x, y, path, opts) for (x, y), path, opts in full_iter]
     )
     return pos_arr
+
+
+def get_coords(arr: PosArray, attr: str):
+    """ Get the given coordinates/attribute list from a nested set of ``PosArray``s. """
+    coord_list = []
+    for p in arr:
+        if p.is_array:
+            coord_list += get_coords(p, attr)
+        else:
+            coord_list.append(getattr(p, attr))
+    return coord_list
 
 
 class TestCreatePos(unittest.TestCase):
@@ -186,58 +193,11 @@ class TestScaling(unittest.TestCase):
         assert_allclose(dy_test, dy_expected)
 
 
-class TestSimpleMerges(unittest.TestCase):
-    """ Test that coordinates are correctly recorded across simple merges."""
-
-    def create_row_array(self, x_size=50, num=5, x_offset=0, y_offset=0) -> PosArray:
-        """ Create a simple row images that are ``x_size`` wide. """
-        x_pos = np.arange(0, num) * x_size + x_offset
-        pos_arr = PosArray([Pos(x, y_offset, x_size, x_size) for x in x_pos])
-        return pos_arr
-
-    def test_scaling_offset(self):
-        """ Test the merging of a simple shape. """
-        scale_factor = 0.5
-        x_size = 50
-        x_offset = 30
-
-        count = 4
-        first_row = create_row_array(x_size=x_size, num=count)
-
-        count = 2
-        second_row = create_row_array(x_size=x_size, num=count)
-        second_row += (0, 50)
-        second_row *= 2
-
-        pos_arr = first_row.append(second_row)
-
-        return
-
-        # Start pos in the x direction should also be affected
-        x_expected = np.arange(0, count) * x_size * scale_factor + x_offset
-        x_test = [p.x for p in pos_arr]
-        assert_allclose(x_test, x_expected)
-
-        # Y starting pos should still be zero
-        y_expected = x_expected * 0
-        y_test = [p.y for p in pos_arr]
-        assert_allclose(y_test, y_expected)
-
-        # Ensure the others are as we expect
-        dx_expected = x_size * scale_factor
-        dy_expected = x_size * scale_factor
-        dx_test = [p.dx for p in pos_arr]
-        dy_test = [p.dy for p in pos_arr]
-
-        assert_allclose(dx_test, dx_expected)
-        assert_allclose(dy_test, dy_expected)
-
-
 class TestStacking(unittest.TestCase):
     """ Test the top level merging functions. """
 
     def test_col_two_add(self):
-        """ Check adding of two coulmn shapes. """
+        """ Check adding of two column shapes. """
         count_right = 4
         col_right = create_pos_array(y_num=count_right)
 
@@ -253,10 +213,9 @@ class TestStacking(unittest.TestCase):
         y_max_expected = 50 * (count_left)
         y_max_test = pos_arr.y_max
         self.assertEqual(y_max_test, y_max_expected)
-        return
 
     def test_col_three_add(self):
-        """ Check adding of two coulmn shapes and a row. """
+        """ Check adding of two column shapes and a row. """
         count_right = 4
         col_right = create_pos_array(y_num=count_right)
 
@@ -275,8 +234,6 @@ class TestStacking(unittest.TestCase):
         y_max_expected = 50 * (count_left)
         y_max_test = pos_arr.y_max
         self.assertEqual(y_max_test, y_max_expected)
-
-        return
 
     def test_col_three_add_alt(self):
         """ Check adding of two coulmn shapes and a row using operator overloading. """
@@ -298,8 +255,6 @@ class TestStacking(unittest.TestCase):
         y_max_expected = 50 * (count_left)
         y_max_test = pos_arr.y_max
         assert_allclose(y_max_test, y_max_expected)
-
-        return
 
     def test_col_three_add_reduce(self):
         """ Check adding of two coulmn shapes and a row using operator overloading. """
@@ -323,8 +278,6 @@ class TestStacking(unittest.TestCase):
         y_max_test = pos_arr.y_max
         assert_allclose(y_max_test, y_max_expected)
 
-        return
-
     def test_row_two_add(self):
         """ Check adding of two row shapes. """
         count_top = 2
@@ -342,7 +295,6 @@ class TestStacking(unittest.TestCase):
         y_max_expected = 50 * (1 + count_top / count_bottom)
         y_max_test = pos_arr.y_max
         assert_allclose(y_max_test, y_max_expected)
-        return
 
     def test_row_two_add_alt(self):
         """ Check adding of two row shapes. """
@@ -361,7 +313,6 @@ class TestStacking(unittest.TestCase):
         y_max_expected = 50 * (1 + count_top / count_bottom)
         y_max_test = pos_arr.y_max
         assert_allclose(y_max_test, y_max_expected)
-        return
 
 
 class TestPosCombine(unittest.TestCase):
@@ -419,12 +370,53 @@ class TestPosCombine(unittest.TestCase):
         pos_test = [p.dx for p in pos_arr]
         assert_allclose(pos_test, pos_expected)
 
+    def test_tri_array_merge(self):
+        """ Investigate rescaling of nested PosArray """
+        pos_arr = Pos(50, 50) / (Pos(50, 50) + Pos(50, 50))
+        pos_arr = Pos(75, 75) + pos_arr
+
+        x_test = get_coords(pos_arr, "x")
+        x_expected = [0, 75, 75, 100]
+        assert_allclose(x_test, x_expected)
+
+        y_test = get_coords(pos_arr, "y")
+        y_expected = [0, 0, 50, 50]
+        assert_allclose(y_test, y_expected)
+
+        dx_test = get_coords(pos_arr, "dx")
+        dx_expected = [75, 50, 25, 25]
+        assert_allclose(dx_test, dx_expected)
+
+        dy_test = get_coords(pos_arr, "dy")
+        dy_expected = [75, 50, 25, 25]
+        assert_allclose(dy_test, dy_expected)
+
+    def test_quad_array_merge(self):
+        """ Investigate rescaling of nested PosArray """
+        pos_arr = Pos(100, 100) / (Pos(50, 50) + Pos(50, 50))
+        pos_arr = (Pos(75, 75) / Pos(75, 75)) + pos_arr
+
+        x_test = get_coords(pos_arr, "x")
+        x_expected = [0, 0, 75, 75, 125]
+        assert_allclose(x_test, x_expected)
+
+        y_test = get_coords(pos_arr, "y")
+        y_expected = [0, 75, 0, 100, 100]
+        assert_allclose(y_test, y_expected)
+
+        dx_test = get_coords(pos_arr, "dx")
+        dx_expected = [75, 75, 100, 50, 50]
+        assert_allclose(dx_test, dx_expected)
+
+        dy_test = get_coords(pos_arr, "dy")
+        dy_expected = [75, 75, 100, 50, 50]
+        assert_allclose(dy_test, dy_expected)
+
     def test_pos_alt(self):
         """ Merging of multiple pos using the short notations. """
         count_row = 4
 
         pos_arr = ((Pos(50, 50) / Pos(50, 50)) + Pos(50, 50)) / Pos(100, 50)
-        pos_arr.sketch()
 
         len_test = len(pos_arr)
         len_expected = count_row

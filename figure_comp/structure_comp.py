@@ -23,13 +23,12 @@ from dataclasses import dataclass
 from typing import List, Union
 
 import figure_comp.figure_rescale as fr
-from figure_comp.figure_rescale import Image
 import figure_comp.coordinate_tracking as ct
 
 
 @dataclass
 class _Container:
-    cont: List[Union["_Container", Image]]
+    cont: List[Union["_Container", ct.Pos]]
 
     def __getitem__(self, k):
         """ Indexing the _Containter indexes the cont."""
@@ -37,13 +36,23 @@ class _Container:
             return self.cont[k]
         raise TypeError("Index for _Container must be an integer")
 
-    def run(self) -> fr.MergedImage:
-        def activate(c: List[Union["_Container", Image]]):
+    def run(self) -> ct.PosArray:
+        def activate(c: List[Union["_Container", ct.Pos, ct.PosArray]]):
             """ Resolve the nested containers or pass images through """
             return c.run() if isinstance(c, _Container) else c
 
         cont = [activate(c) for c in self.cont]
         return self.merge_func(cont, **self.args)
+
+    def outline(self):
+        def print_row(container, offset=4):
+            for item in container:
+                if isinstance(item, _Container):
+                    print_row(item, offset=offset + 4)
+                else:
+                    print(f"{' '*offset}{item}")
+
+        print_row(self.cont)
 
 
 @dataclass

@@ -88,12 +88,12 @@ class ParsedStructure:
             turn this into a structure."""
             if isinstance(leaf, str):
                 image_path = Path(leaf).resolve()
+                # image_path = Path(leaf)
                 if not image_path.is_file():
                     if draft:
                         raise NotImplementedError("Finish draft mode")
                     else:
-                        raise FileNotFoundError(f"Unable to find image {leaf}")
-                # return Image(io.imread(image_path), image_path)
+                        pass
                 return Pos(50, 50, path=image_path)
             else:
                 return leaf.assemble_figure(draft=draft)
