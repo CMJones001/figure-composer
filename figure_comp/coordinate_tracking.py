@@ -74,6 +74,10 @@ class Pos:
     def y_range(self):
         return self.y_max - self.y_min
 
+    @property
+    def aspect(self):
+        return self.x_range / self.y_range
+
     def stack_right(self, other: "PosArray") -> "PosArray":
         """Add a PosArray to the right of current.
 

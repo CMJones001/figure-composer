@@ -315,6 +315,84 @@ class TestStacking(unittest.TestCase):
         assert_allclose(y_max_test, y_max_expected)
 
 
+class TestStackingIrregular(unittest.TestCase):
+    """ Test the top level merging functions on rectangular shapes. """
+
+    def test_single_col_merge(self):
+        """ Stack the shapes into a simple column. """
+        x_size = 80
+        y_size = 40
+        count = 4
+
+        pos_arr = create_pos_array(x_size, y_size, y_num=count)
+
+        x_test = get_coords(pos_arr, "x")
+        x_expected = np.arange(count) * 0
+        assert_allclose(x_test, x_expected)
+
+        y_test = get_coords(pos_arr, "y")
+        y_expected = np.arange(count) * y_size
+        assert_allclose(y_test, y_expected)
+
+        dx_test = get_coords(pos_arr, "dx")
+        dx_expected = np.ones(count) * x_size
+        assert_allclose(dx_test, dx_expected)
+
+        dy_test = get_coords(pos_arr, "dy")
+        dy_expected = np.ones(count) * y_size
+        assert_allclose(dy_test, dy_expected)
+
+    def test_col_two_add(self):
+        """ Check adding of two column shapes. """
+        x_one_size = 60
+        y_one_size = 30
+        count_one = 3
+        pos_one = create_pos_array(x_one_size, y_one_size, y_num=count_one)
+        aspect_one = x_one_size / y_one_size
+
+        x_two_size = 30
+        y_two_size = 30
+        count_two = 2
+        pos_two = create_pos_array(x_two_size, y_two_size, y_num=count_two)
+        aspect_two = x_two_size / y_two_size
+
+        pos_arr = pos_one + pos_two
+
+        total_height_test = pos_arr.y_range
+        total_height_expected = y_one_size * count_one
+        self.assertEqual(total_height_test, total_height_expected)
+
+        aspect_test = get_coords(pos_arr, "aspect")
+        aspect_expected = [aspect_one] * count_one + [aspect_two] * count_two
+        assert_allclose(aspect_test, aspect_expected)
+
+    def test_col_three_add(self):
+        """ Check adding of two column shapes and a row. """
+        x_one_size = 60
+        y_one_size = 30
+        count_one = 3
+        pos_one = create_pos_array(x_one_size, y_one_size, y_num=count_one)
+        aspect_one = x_one_size / y_one_size
+        total_height = count_one * y_one_size
+
+        x_two_size = 30
+        y_two_size = 30
+        count_two = 2
+        pos_two = create_pos_array(x_two_size, y_two_size, y_num=count_two)
+        aspect_two = x_two_size / y_two_size
+
+        pos_arr = Pos(20, count_one * y_one_size) + (pos_one + pos_two)
+        pos_arr.sketch("/tmp/test-figure.png", label="short")
+
+        x_test = get_coords(pos_arr, "x")
+        x_expected = [0, 20, 20, 20, 80, 80]
+        assert_allclose(x_test, x_expected)
+
+        y_test = get_coords(pos_arr, "y")
+        y_expected = [0, 0, 30, 60, 0, 45]
+        assert_allclose(y_test, y_expected)
+
+
 class TestPosCombine(unittest.TestCase):
     """ Test the merging of the Pos and PosArray"""
 
