@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
-import figure_comp.structure_parse as sp
-import argh
 from pathlib import Path
+
+import argh
+
+import figure_comp.load_image as li
+import figure_comp.structure_parse as sp
 
 """ Manager for the figure composer.
 
@@ -57,7 +60,8 @@ def main(
     parsed_structure = sp.parse_file(configuration_path)
 
     # Convert the schemematic into a figure structure
-    assembled_figure = parsed_structure.assemble_figure().run()
+    default_gen = li.generate_default_label_text("({chr(index+0x41)})")
+    assembled_figure = parsed_structure.assemble_figure(default_gen=default_gen).run()
 
     if dry:
         assembled_figure.sketch(save_path, label=True)

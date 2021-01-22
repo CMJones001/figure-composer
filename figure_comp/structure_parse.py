@@ -5,7 +5,7 @@
 Config Structure
 ----------------
 
-The configuration file consists of nested "leaves". Each of these leaves may be a path to 
+The configuration file consists of nested "leaves". Each of these leaves may be a path to
 an image or nested Row/Column that contains more leaves. The top level is always a Row or
 Column.
 
@@ -53,8 +53,10 @@ from typing import List, Optional, Union
 import yaml
 from icecream import ic
 
-from figure_comp.structure_comp import Col, Row
+import figure_comp.load_image as li
 from figure_comp.coordinate_tracking import Pos
+from figure_comp.load_image import Label
+from figure_comp.structure_comp import Col, Row
 
 Leaf = Union["ParsedStructure", str]
 
@@ -71,7 +73,7 @@ class ParsedStructure:
         parsed_leaves = [parse_leaf(l) for l in self.leaves]
         return (self.struct, parsed_leaves, self.options)
 
-    def assemble_figure(self, draft: bool = False) -> Union[Row, Col]:
+    def assemble_figure(self, draft: bool = False, default_gen=None) -> Union[Row, Col]:
         """Turn the structure into a figure.
 
         Parameters
@@ -86,15 +88,20 @@ class ParsedStructure:
             turn this into a structure."""
             if isinstance(leaf, str):
                 image_path = Path(leaf).resolve()
-                # image_path = Path(leaf)
                 if not image_path.is_file():
                     if draft:
                         raise NotImplementedError("Finish draft mode")
                     else:
                         pass
-                return Pos(path=image_path)
+
+                if default_gen is not None:
+                    label_text = next(default_gen)
+                else:
+                    label_text = "X"
+                label = Label(label_text, (0.1, 0.1))
+                return Pos(path=image_path, label=label)
             else:
-                return leaf.assemble_figure(draft=draft)
+                return leaf.assemble_figure(draft=draft, default_gen=default_gen)
 
         return self.struct([_parse_leaf(leaf) for leaf in self.leaves], **self.options)
 
@@ -120,7 +127,6 @@ def _parse_section(sec) -> ParsedStructure:
     # Lookup table between string and objects
     # Might be overkill for now, but scales better
     structures = dict(Row=Row, Col=Col)
-
     for key, entry in sec.items():
         if key in ["Row", "Col"]:
             structure = structures[key]

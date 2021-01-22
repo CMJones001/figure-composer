@@ -73,7 +73,6 @@ class Image:
         """ Add text labels to the image. """
         # The layout engine arg is required to fix a segfault
         relative_pos = (np.array(label.pos) * self.data.shape[:2]).astype(np.int)
-        ic(relative_pos)
 
         font = ImageFont.truetype(str(FONT), 50, layout_engine=ImageFont.LAYOUT_BASIC)
         pil_image = PIL.Image.fromarray(self.data.astype(np.uint8))
@@ -105,3 +104,15 @@ class ImageBlank(Image):
         self.x_size = new_size[0]
         self.y_size = new_size[1]
         self.data = np.ones((self.y_size, self.x_size, 4), dtype=np.uint8) * 255
+
+
+def generate_default_label_text(format_str: None):
+    """ Generator for default labels. """
+    if format_str is None:
+        format_str = "{index+1}."
+    index = 0
+    while True:
+        # Evaulate the template as if it were a fstring
+        label = eval(f'f"{format_str}"')
+        yield label
+        index += 1
