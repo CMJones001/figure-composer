@@ -2,11 +2,39 @@
 
 """ Handle the resizing and loading of images. """
 
-from skimage import io, transform
+from dataclasses import dataclass, field
 from pathlib import Path
+
 import numpy as np
+import PIL
+from PIL import ImageDraw, ImageFont
+from skimage import io, transform
+from typing import List, Optional, Tuple
+from icecream import ic
 
 ImData = np.ndarray
+
+# TODO: Make font choice dynamic
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+FONT = PROJECT_DIR / "fonts/cm-unicode-0.7.0/cmunrm.ttf"
+
+
+@dataclass
+class Label:
+    """Storage for label properties.
+
+    The position is given in relative coordinates in the range [0, 1].
+    """
+
+    text: str
+    pos: (float, float)
+    colour: Tuple = field(default_factory=lambda: (0, 0, 0))
+
+    def __post_init__(self):
+        self.pos = np.array(self.pos)
+        if self.pos.max() > 1 or self.pos.min() < 0:
+            error_msg = f"Label position range must be in the range [0, 1]: {self.pos}"
+            raise ValueError(error_msg)
 
 
 class Image:
@@ -41,6 +69,18 @@ class Image:
             self.data_original, new_size, order=order, preserve_range=True
         )
 
+    def annotate(self, label):
+        """ Add text labels to the image. """
+        # The layout engine arg is required to fix a segfault
+        relative_pos = (np.array(label.pos) * self.data.shape[:2]).astype(np.int)
+        ic(relative_pos)
+
+        font = ImageFont.truetype(str(FONT), 50, layout_engine=ImageFont.LAYOUT_BASIC)
+        pil_image = PIL.Image.fromarray(self.data.astype(np.uint8))
+        pil_editable = ImageDraw.Draw(pil_image)
+        pil_editable.text(relative_pos, label.text, label.colour, font=font)
+        self.data = np.array(pil_image)
+
 
 class ImageBlank(Image):
     """ Class for images that cannot be loaded. """
@@ -49,7 +89,8 @@ class ImageBlank(Image):
         self.path = path
         self.x_size: int = x_size
         self.y_size: int = y_size
-        self.data: ImData = np.ones((y_size, x_size))
+        # Create a white image, but zero out the alpha channel
+        self.data: ImData = np.ones((y_size, x_size, 4), dtype=np.uint8) * 255
 
     @property
     def x(self):
@@ -63,4 +104,4 @@ class ImageBlank(Image):
         """ Resize the image. """
         self.x_size = new_size[0]
         self.y_size = new_size[1]
-        self.data = np.ones((self.y_size, self.x_size))
+        self.data = np.ones((self.y_size, self.x_size, 4), dtype=np.uint8) * 255

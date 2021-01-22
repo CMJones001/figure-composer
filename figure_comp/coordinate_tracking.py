@@ -4,30 +4,54 @@ from functools import reduce
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-from matplotlib.patches import Rectangle
 import numpy as np
 from icecream import ic
-
-from figure_comp.load_image import Image, ImageBlank
-import figure_comp.plot_tools as pt
+from matplotlib.patches import Rectangle
 from skimage import io
+
+import figure_comp.plot_tools as pt
+from figure_comp.load_image import Image, ImageBlank, Label
 
 
 class Pos:
+    """ Storage for the position and size of the images in figure layout. """
+
     def __init__(
         self,
         path: Path,
-        dx: int = 50,
-        dy: int = 50,
-        x: int = 0.0,
-        y: int = 0.0,
+        label: Optional[Label] = None,
+        dx: Optional[int] = 50,
+        dy: Optional[int] = 50,
+        x: Optional[int] = 0.0,
+        y: Optional[int] = 0.0,
         options=None,
     ):
+        """
+        Parameters
+        ----------
+
+        path: Path
+           Path to the image to include in the figure
+        label: Label
+
+        If the path cannot be resolved into a file, then an ImageBlank will be loaded.
+
+        Debugging Parameters
+        --------------------
+        These parameters do not need be provided by the user, except for testing.
+
+        dx, dy: Optional[int]
+           The size of the image.
+        x, y: Optional[int]
+           The position of the upper right corner of the image.
+
+        """
         self.dx = dx
         self.dy = dy
         self.x = x
         self.y = y
         self.options = options if path is not None else dict()
+        self.label = label
 
         # TODO: Tidy up this path resolving
         if path is None:
@@ -122,6 +146,11 @@ class Pos:
         """
         self.dx = self.dx * scale
         self.dy = self.dy * scale
+
+    def annotate(self):
+        """ Add a label to the image, using the image coordinates. """
+        if self.label is not None:
+            self.image.annotate(self.label)
 
     def __add__(self, other):
         """If given a PosArray then stack on the right, otherwise shift by
@@ -314,6 +343,7 @@ class PosArray(Pos):
                     continue
 
                 p.image.resize((p.y_range, p.x_range))
+                p.annotate()
                 im[p.y_min : p.y_max, p.x_min : p.x_max] = p.image.data
                 index = index + 1
 
