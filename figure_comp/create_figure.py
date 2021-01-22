@@ -6,6 +6,7 @@ import argh
 
 import figure_comp.load_image as li
 import figure_comp.structure_parse as sp
+from icecream import ic
 
 """ Manager for the figure composer.
 
@@ -60,8 +61,8 @@ def main(
     parsed_structure = sp.parse_file(configuration_path)
 
     # Convert the schemematic into a figure structure
-    default_gen = li.generate_default_label_text("({chr(index+0x41)})")
-    assembled_figure = parsed_structure.assemble_figure(default_gen=default_gen).run()
+    # default_gen = li.generate_default_label_text("({chr(index+0x41)})")
+    assembled_figure = parsed_structure.run()
 
     if dry:
         assembled_figure.sketch(save_path, label=True)

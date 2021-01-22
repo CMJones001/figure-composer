@@ -52,6 +52,7 @@ class Pos:
         self.y = y
         self.options = options if path is not None else dict()
         self.label = label
+        self.template = True
 
         # TODO: Tidy up this path resolving
         if path is None:
@@ -63,6 +64,7 @@ class Pos:
                 self.image = Image(self.path)
                 self.dx = self.image.x
                 self.dy = self.image.y
+                self.template = False
             else:
                 self.image = ImageBlank(self.path, dx, dy)
 
@@ -187,7 +189,13 @@ class Pos:
         )
 
     def __repr__(self):
-        return f"Pos at {self.x,self.y}, size {self.dx,self.dy} pointing to {self.path}"
+        short_path = self.path
+        reprstr = f"({self.x:.1f}, {self.y:.1f}) "
+        reprstr += f"+({self.dx:.1f}, {self.dy:.1f})"
+        reprstr += f" at ::/{short_path}"
+        if self.template:
+            reprstr += " (template)"
+        return reprstr
 
     @property
     def is_array(self):
@@ -322,7 +330,7 @@ class PosArray(Pos):
         attrs = ["x", "y", "dx", "dy"]
         [normalise_pos_arr(self.arr, attr) for attr in attrs]
 
-    def populate(self, save_path: Path, final_width: Optional[int]):
+    def populate(self, save_path: Path, final_width: Optional[int] = 1500):
         """ Load the images into the structure. """
         if final_width is not None:
             self.set_width(final_width)
@@ -351,7 +359,7 @@ class PosArray(Pos):
         io.imsave(save_path, im_arr, check_contrast=False)
 
     def __repr__(self):
-        return "PosArray: " + "\n".join([p.__repr__() for p in self])
+        return "PosArray: {" + "\n".join([p.__repr__() for p in self]) + "}"
 
     @property
     def is_array(self):
