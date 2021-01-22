@@ -9,6 +9,7 @@ trepan3k = "*"
 icecream = "*"
 bpython = "*"
 jedi = "*"
+pytest = "*"
 
 [packages]
 numpy = "*"

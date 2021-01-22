@@ -46,15 +46,23 @@ Two columns with two images each, surrounding a fifth image in a row.
 """
 
 
-def main(configuration_path: Path, save_path: Path):
+def main(
+    configuration_path: Path = "broken_config.yaml",
+    save_path: Path = "/tmp/debug-figure.png",
+    dry: bool = False,
+):
     """ Create the figure from the description in the given configuration file. """
     # Convert the yaml into a structure schemematic
 
     parsed_structure = sp.parse_file(configuration_path)
 
     # Convert the schemematic into a figure structure
-    assembled_figure = parsed_structure.assemble_figure()
-    assembled_figure.run().save(save_path)
+    assembled_figure = parsed_structure.assemble_figure().run()
+
+    if dry:
+        assembled_figure.sketch(save_path, label=True)
+    else:
+        assembled_figure.populate(save_path, final_width=1200)
 
 
 if __name__ == "__main__":
