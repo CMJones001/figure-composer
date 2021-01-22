@@ -92,7 +92,7 @@ class ParsedStructure:
                         raise NotImplementedError("Finish draft mode")
                     else:
                         pass
-                return Pos(50, 50, path=image_path)
+                return Pos(path=image_path)
             else:
                 return leaf.assemble_figure(draft=draft)
 

@@ -74,22 +74,3 @@ class Col(_Container):
         self.args = dict()
         # self.merge_func = fr.merge_col_scale
         self.merge_func = ct.merge_col
-
-
-if __name__ == "__main__":
-    import numpy as np
-
-    n_repeats = 10
-    block_height = 100
-    test_data = [np.ones([3, 3, 3]) * i * 200 // n_repeats for i in range(n_repeats)]
-    test_images = [fr.Image(t, path=None) for t in test_data]
-
-    test_images.append(
-        Row([fr.Image(np.zeros([3, 3, 3]), path=None)], y_size=block_height),
-    )
-
-    row = Row(test_images, y_size=block_height)
-    merged_im = row.run()
-
-    shape_test = merged_im.shape
-    shape_expected = (block_height, block_height * n_repeats, 3)

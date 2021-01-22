@@ -10,11 +10,20 @@ from numpy.testing import assert_allclose
 from figure_comp.coordinate_tracking import Pos, PosArray
 import figure_comp.coordinate_tracking as ct
 
+test_dir = Path(__file__).resolve().parent
+test_im_dir = test_dir / "test_im"
+
+
+def PBl(dx, dy, x=0, y=0, path=None, options=None) -> Pos:
+    """ Shorthand for creating blank Pos elements. """
+    options = options if options is not None else dict()
+    return Pos(path=path, dx=dx, dy=dy, x=x, y=y, options=options)
+
 
 def create_row_array(x_size=50, num=5, x_offset=0, y_offset=0) -> PosArray:
     """ Create a simple row of images that are ``x_size`` wide. """
     x_pos = np.arange(0, num) * x_size + x_offset
-    pos_arr = PosArray([Pos(x_size, x_size, x, y_offset, path=None) for x in x_pos])
+    pos_arr = PosArray([PBl(x_size, x_size, x, y_offset, path=None) for x in x_pos])
     return pos_arr
 
 
@@ -26,7 +35,7 @@ def create_pos_array(
     y_pos = np.arange(0, y_num) * y_size + y_offset
     pos_arr = PosArray(
         [
-            Pos(x_size, y_size, x, y, path=None)
+            PBl(x_size, y_size, x, y, path=None)
             for x, y in itertools.product(x_pos, y_pos)
         ]
     )
@@ -46,7 +55,7 @@ def create_pos_array_opts(
     full_iter = itertools.zip_longest(x_y_prod, paths, opts)
 
     pos_arr = PosArray(
-        [Pos(x_size, y_size, x, y, path, opts) for (x, y), path, opts in full_iter]
+        [PBl(x_size, y_size, x, y, path, opts) for (x, y), path, opts in full_iter]
     )
     return pos_arr
 
@@ -381,8 +390,8 @@ class TestStackingIrregular(unittest.TestCase):
         pos_two = create_pos_array(x_two_size, y_two_size, y_num=count_two)
         aspect_two = x_two_size / y_two_size
 
-        pos_arr = Pos(20, count_one * y_one_size) + (pos_one + pos_two)
-        pos_arr.sketch("/tmp/test-figure.png", label="short")
+        pos_arr = PBl(20, count_one * y_one_size) + (pos_one + pos_two)
+        # pos_arr.sketch("/tmp/test-figure.png", label="short")
 
         x_test = get_coords(pos_arr, "x")
         x_expected = [0, 20, 20, 20, 80, 80]
@@ -399,7 +408,7 @@ class TestPosCombine(unittest.TestCase):
     def test_pos_comp_row(self):
         """ Merging of multiple pos into a row. """
         count_row = 3
-        positions = [Pos(50, 50) for i in range(count_row)]
+        positions = [PBl(50, 50) for i in range(count_row)]
         pos_arr = ct.merge_row(positions)
 
         len_test = len(pos_arr)
@@ -413,7 +422,7 @@ class TestPosCombine(unittest.TestCase):
     def test_pos_comp_col(self):
         """ Merging of multiple pos into a col. """
         count_row = 3
-        positions = [Pos(50, 50) for i in range(count_row)]
+        positions = [PBl(50, 50) for i in range(count_row)]
         pos_arr = ct.merge_col(positions)
 
         len_test = len(pos_arr)
@@ -431,7 +440,7 @@ class TestPosCombine(unittest.TestCase):
     def test_pos_comp_merged(self):
         """ Merging of nested positions. """
         count_row = 3
-        positions = [Pos(50, 50) for i in range(count_row)]
+        positions = [PBl(50, 50) for i in range(count_row)]
         pos_arr = ct.merge_row(
             [ct.merge_col([positions[0], positions[1]]), positions[2]]
         )
@@ -450,8 +459,8 @@ class TestPosCombine(unittest.TestCase):
 
     def test_tri_array_merge(self):
         """ Investigate rescaling of nested PosArray """
-        pos_arr = Pos(50, 50) / (Pos(50, 50) + Pos(50, 50))
-        pos_arr = Pos(75, 75) + pos_arr
+        pos_arr = PBl(50, 50) / (PBl(50, 50) + PBl(50, 50))
+        pos_arr = PBl(75, 75) + pos_arr
 
         x_test = get_coords(pos_arr, "x")
         x_expected = [0, 75, 75, 100]
@@ -471,8 +480,8 @@ class TestPosCombine(unittest.TestCase):
 
     def test_quad_array_merge(self):
         """ Investigate rescaling of nested PosArray """
-        pos_arr = Pos(100, 100) / (Pos(50, 50) + Pos(50, 50))
-        pos_arr = (Pos(75, 75) / Pos(75, 75)) + pos_arr
+        pos_arr = PBl(100, 100) / (PBl(50, 50) + PBl(50, 50))
+        pos_arr = (PBl(75, 75) / PBl(75, 75)) + pos_arr
 
         x_test = get_coords(pos_arr, "x")
         x_expected = [0, 0, 75, 75, 125]
@@ -494,7 +503,7 @@ class TestPosCombine(unittest.TestCase):
         """ Merging of multiple pos using the short notations. """
         count_row = 4
 
-        pos_arr = ((Pos(50, 50) / Pos(50, 50)) + Pos(50, 50)) / Pos(100, 50)
+        pos_arr = ((PBl(50, 50) / PBl(50, 50)) + PBl(50, 50)) / PBl(100, 50)
 
         len_test = len(pos_arr)
         len_expected = count_row
@@ -520,6 +529,53 @@ class TestPopulated(unittest.TestCase):
 
         paths_test = [p.path for p in pos_arr]
         self.assertEqual(paths_test, paths_expected)
+
+    @unittest.skip
+    def test_double_populate_empty(self):
+        """ Test the combination of two empty arrays. """
+        pos_arr = PBl(100, 50) + PBl(50, 50)
+        pos_arr.populate("/tmp/test-double_populate_empty.png")
+
+    @unittest.skip
+    def test_double_populate(self):
+        """ Test the combination of three populated images. """
+        im_paths = [test_im_dir / f"square-im-{i+1}.png" for i in range(2)]
+        pos_arr = Pos(path=im_paths[0])
+        pos_arr += Pos(path=im_paths[1])
+
+        pos_arr.rescale(0.3)
+        pos_arr.populate("/tmp/test-double-populate.png")
+
+    @unittest.skip
+    def test_triple_populate_rect(self):
+        """ Test the combination of two empty arrays. """
+        pos_arr = Pos(path=test_im_dir / "square-im-1.png")
+        pos_arr += Pos(path=test_im_dir / "square-im-2.png")
+        pos_arr /= Pos(path=test_im_dir / "rect-im-2.png")
+        pos_arr += Pos(path=test_im_dir / "square-im-3.png")
+
+        pos_arr.rescale(0.3)
+        pos_arr.populate("/tmp/test-triple-populate-rect.png", final_width=1000)
+
+
+class TestNormalise(unittest.TestCase):
+    """ Test the casting of the array size to ints. """
+
+    def test_quad_array_merge(self):
+        """ Investigate normalisation of nested PosArray """
+        # Create an array with float sizes and offsets
+        pos_arr = PBl(50, 100) / (PBl(40, 50) + PBl(40, 50))
+        pos_arr = (PBl(80, 80) / PBl(80, 80)) + pos_arr + PBl(20, 80)
+
+        pos_arr._normalise_values()
+
+        # Test that all x, y, dx, dy are ints
+        for attr in ["x", "y", "dx", "dy"]:
+            test = get_coords(pos_arr, attr)
+            self.assertTrue(all([isinstance(i, int) for i in test]))
+
+        for attr in ["x_range", "y_range"]:
+            self.assertTrue(isinstance(getattr(pos_arr, i), int) for i in attr)
 
 
 if __name__ == "__main__":

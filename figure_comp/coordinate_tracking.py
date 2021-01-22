@@ -1,33 +1,46 @@
 #!/usr/bin/env python3
 
-from dataclasses import dataclass, field
 from functools import reduce
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
-import matplotlib.pyplot as plt
-from icecream import ic
 from matplotlib.patches import Rectangle
+import numpy as np
+from icecream import ic
 
+from figure_comp.load_image import Image, ImageBlank
 import figure_comp.plot_tools as pt
+from skimage import io
 
 
 class Pos:
     def __init__(
         self,
-        dx: float,
-        dy: float,
-        x: float = 0.0,
-        y: float = 0.0,
-        path: Path = None,
+        path: Path,
+        dx: int = 50,
+        dy: int = 50,
+        x: int = 0.0,
+        y: int = 0.0,
         options=None,
     ):
         self.dx = dx
         self.dy = dy
         self.x = x
         self.y = y
-        self.path = Path(path) if path is not None else None
         self.options = options if path is not None else dict()
+
+        # TODO: Tidy up this path resolving
+        if path is None:
+            self.path = Path(".")
+            self.image = ImageBlank(self.path, dx, dy)
+        else:
+            self.path = Path(path)
+            if self.path.exists():
+                self.image = Image(self.path)
+                self.dx = self.image.x
+                self.dy = self.image.y
+            else:
+                self.image = ImageBlank(self.path, dx, dy)
 
     def append(self, other):
         if not isinstance(other, (Pos, PosArray)):
@@ -262,6 +275,51 @@ class PosArray(Pos):
         ax.set_aspect("equal", "box")
         pt.save(save_path)
 
+    def _normalise_values(self):
+        """ Set the x, y, dx, dy positions in the nested array into integers. """
+
+        def normalise_pos_arr(pos_arr: PosArray, attr: str):
+            """ Convert the given attr into an integer """
+            for p in pos_arr:
+                if p.is_array:
+                    # Recursively parse ``PosArray``s
+                    normalise_pos_arr(p, attr)
+                else:
+                    # Convert the values on a ``Pos``
+                    # The +0.5 rounds the values when they are truncated by int
+                    setattr(p, attr, int(getattr(p, attr) + 0.5))
+            return
+
+        attrs = ["x", "y", "dx", "dy"]
+        [normalise_pos_arr(self.arr, attr) for attr in attrs]
+
+    def populate(self, save_path: Path, final_width: Optional[int]):
+        """ Load the images into the structure. """
+        if final_width is not None:
+            self.set_width(final_width)
+        self._normalise_values()
+
+        # TODO: Currently assuming that the array starts at (0, 0)
+        if self.x_min != 0 or self.y_min != 0:
+            raise ValueError("Creating image from array with non-zero starting pos")
+
+        im_arr = np.zeros((self.y_range, self.x_range, 4), dtype=np.uint8)
+        index = 0
+
+        def populate_in_array(pos_array: PosArray, im: np.ndarray):
+            nonlocal index
+            for p in pos_array:
+                if p.is_array:
+                    populate_in_array(p, im)
+                    continue
+
+                p.image.resize((p.y_range, p.x_range))
+                im[p.y_min : p.y_max, p.x_min : p.x_max] = p.image.data
+                index = index + 1
+
+        populate_in_array(self.arr, im=im_arr)
+        io.imsave(save_path, im_arr, check_contrast=False)
+
     def __repr__(self):
         return "PosArray: " + "\n".join([p.__repr__() for p in self])
 
@@ -269,6 +327,12 @@ class PosArray(Pos):
     def is_array(self):
         """ Shorthand function that is more extensible than isinstance(self, PosArray). """
         return True
+
+    def set_width(self, new_width):
+        """ Rescale the image so that final image is the given width"""
+        current_width = self.x_range
+        scale_factor = new_width / current_width
+        self.rescale(scale_factor)
 
 
 def merge_row(pos_list: List[PosArray]) -> PosArray:

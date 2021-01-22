@@ -136,7 +136,7 @@ class TestAssembleStruct(unittest.TestCase):
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
 
         pos_test = sp._parse_section(test_config).assemble_figure()
-        pos_expected = [ct.Pos(50, 50, path=p.resolve()) for p in [im_one, im_two]]
+        pos_expected = [ct.Pos(path=p.resolve()) for p in [im_one, im_two]]
 
         # Test outer layer
         self.assertTrue(isinstance(pos_test, sc.Row))
@@ -168,7 +168,7 @@ class TestAssembleStruct(unittest.TestCase):
         test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
         figure_test = sp._parse_section(test_config).assemble_figure()
 
-        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
+        ims = [ct.Pos(path=p.resolve()) for p in im_paths]
 
         # Test outer layer
         self.assertTrue(isinstance(figure_test, sc.Row))
@@ -190,7 +190,7 @@ class TestAssembleStruct(unittest.TestCase):
             "tests/test_im/square-im-5.png",
         ]
         im_paths = [Path(p) for p in paths]
-        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
+        ims = [ct.Pos(path=p.resolve()) for p in im_paths]
 
         test_yaml = f"""
         - Row:
@@ -229,7 +229,7 @@ class TestAssembleStruct(unittest.TestCase):
             "tests/test_im/square-im-5.png",
         ]
         im_paths = [Path(p) for p in paths]
-        ims = [ct.Pos(50, 50, path=p.resolve()) for p in im_paths]
+        ims = [ct.Pos(path=p.resolve()) for p in im_paths]
 
         test_yaml = f"""
         - Row:
@@ -346,17 +346,17 @@ class TestAssembleStruct(unittest.TestCase):
         figure_test = sp._parse_section(test_config).assemble_figure()
 
         assembled_fig = figure_test.run()
-        assembled_fig.sketch("/tmp/assembled-three.png", label="short")
+        # assembled_fig.sketch("/tmp/assembled-three.png", label="short")
 
     def test_nested_four_level(self):
         """ Read options in a nested element. """
         paths = [
             "tests/test_im/rect-im-1.png",
             "tests/test_im/rect-im-2.png",
+            "tests/test_im/rect-im-3.png",
             "tests/test_im/square-im-3.png",
             "tests/test_im/square-im-4.png",
             "tests/test_im/square-im-5.png",
-            "tests/test_im/rect-im-3.png",
             "tests/test_im/rect-im-3.png",
         ]
         im_paths = [Path(p) for p in paths]
@@ -366,7 +366,7 @@ class TestAssembleStruct(unittest.TestCase):
           - Col:
             - {im_paths[0]}
             - Row:
-                - {im_paths[0]}
+                - {im_paths[3]}
                 - Col:
                     - {im_paths[0]}
                     - {im_paths[2]}
@@ -376,7 +376,8 @@ class TestAssembleStruct(unittest.TestCase):
         figure_test = sp._parse_section(test_config).assemble_figure()
 
         assembled_fig = figure_test.run()
-        assembled_fig.sketch("/tmp/assembled.png", label="short")
+        # assembled_fig.sketch("/tmp/assembled.png", label="short")
+        # assembled_fig.populate("/tmp/nested-four-level.png")
 
     def test_simple_parse_flow(self):
         """ Read options in the simplest case with the space saving format. """
