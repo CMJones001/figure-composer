@@ -107,24 +107,28 @@ def parse_yaml(structure_dict: dict, dry=False, default_labels=None) -> _Contain
 
 
 def _parse_complex_path(leaf, default_labels=None):
-    """ Parse a path with label_opt: """
-    for path, label_opt in leaf.items():
-        if "pos" in label_opt:
-            pos_str = label_opt["pos"].strip("()")
+    """ Parse a path with label overrides. """
+
+    # NB. We don't iterate here, there is only one entry, but this splits the
+    # path (key) and option dict (values) nicely.
+    for path, label_override in leaf.items():
+
+        # Pos has to be treated before passing into label
+        if "pos" in label_override:
+            pos_str = label_override["pos"].strip("()")
             pos = np.fromstring(pos_str, sep=", ")
-            label_opt.pop("pos")
-        else:
-            pos = (0.1, 0.1)
-        if "text" not in label_opt and default_labels is not None:
-            label_opt["text"] = next(default_labels)
-        label = Label(pos=pos, **label_opt)
+            label_override["pos"] = pos
+
+        label_func = next(default_labels)
+        label = label_func(**label_override)
         return Pos(path, label)
 
 
 def _parse_path(leaf, default_labels=None):
     """ Parse a simple path into a path. """
     if default_labels is not None:
-        label = Label(text=next(default_labels), pos=(0.1, 0.1))
+        label = next(default_labels)()
+        ic(label)
     else:
         label = None
     return Pos(leaf, label)
