@@ -33,7 +33,12 @@ class Label:
     size: int = 30
 
     def __post_init__(self):
-        self.pos = np.array(self.pos)
+        # Deal with position passed as a string
+        if isinstance(self.pos, str):
+            pos_str = self.pos.strip("()")
+            self.pos = np.fromstring(pos_str, sep=", ")
+        elif isinstance(self.pos, tuple):
+            self.pos = np.array(self.pos)
         if self.pos.max() > 1 or self.pos.min() < 0:
             error_msg = f"Label position range must be in the range [0, 1]: {self.pos}"
             raise ValueError(error_msg)
@@ -75,9 +80,6 @@ class Image:
         """ Add text labels to the image. """
         # Coordinates relative to this image, reversed as PIL and numpy have different orders
         relative_pos = (np.array(label.pos) * self.data.shape[:2]).astype(np.int)[::-1]
-
-        ic(relative_pos)
-        ic(self.data.shape)
 
         # The layout engine arg is required to fix a segfault
         font = ImageFont.truetype(
@@ -162,7 +164,7 @@ def generate_default_label_text(
 
     """
     if pos_default is None:
-        pos_default = (0.05, 0.05)
+        pos_default = np.array([0.05, 0.05])
     if format_str is None:
         format_str = "{index+1}."
 

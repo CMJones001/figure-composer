@@ -57,11 +57,7 @@ def main(
 ):
     """ Create the figure from the description in the given configuration file. """
     # Convert the yaml into a structure schemematic
-
-    default_gen = li.generate_default_label_text(
-        "{chr(index+0x61)}.", (0.08, 0.08), size_default=30
-    )
-    parsed_structure = sp.parse_file(configuration_path, default_gen)
+    parsed_structure = sp.parse_file(configuration_path)
 
     # Convert the schemematic into a figure structure
     assembled_figure = parsed_structure.run()

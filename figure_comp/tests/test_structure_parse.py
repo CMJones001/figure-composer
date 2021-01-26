@@ -406,6 +406,106 @@ class TestAssembleOptions(unittest.TestCase):
         ic(struct)
         struct.populate("/tmp/new_parse.png")
 
+    def test_parse_global_opts(self):
+        """ Test that we can read global options. """
+        test_yaml = f"""
+        - Row:
+          - {paths[0]}
+          - Col:
+            - {paths[1]}
+            - {paths[2]}
+            - Row:
+              - {paths[3]}
+              - {paths[4]}
+        - Options:
+          - size: 45
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        pos_arr = sp.parse_yaml(test_config).run()
+
+        labels = get_coords(pos_arr, "label")
+        sizes_test = [l.size for l in labels]
+        sizes_expected = np.ones(5) * 45
+
+        assert_allclose(sizes_test, sizes_expected)
+
+    def test_parse_global_override(self):
+        """ Test that we can override a global options. """
+        test_yaml = f"""
+        - Row:
+          - {paths[0]}
+          - Col:
+            - {paths[1]}: {{size: 10}}
+            - {paths[2]}
+            - Row:
+              - {paths[3]}
+              - {paths[4]}
+        - Options:
+          - size: 45
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        pos_arr = sp.parse_yaml(test_config).run()
+
+        labels = get_coords(pos_arr, "label")
+        sizes_test = [l.size for l in labels]
+        sizes_expected = np.ones(5) * 45
+        sizes_expected[1] = 10
+
+        assert_allclose(sizes_test, sizes_expected)
+
+    def test_parse_global_labels(self):
+        """ Test that we parse the default label gen. """
+        test_yaml = f"""
+        - Row:
+          - {paths[0]}
+          - Col:
+            - {paths[1]}
+            - {paths[2]}
+            - Row:
+              - {paths[3]}
+              - {paths[4]}
+        - Options:
+          - default_label: "{{index+1}}."
+          - size: 18
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        pos_arr = sp.parse_yaml(test_config).run()
+
+        labels = get_coords(pos_arr, "label")
+        text_test = [l.text for l in labels]
+        text_expected = [f"{i+1}." for i in range(5)]
+
+        self.assertEqual(text_test, text_expected)
+
+        sizes_test = [l.size for l in labels]
+        sizes_expected = np.ones(5) * 18
+        assert_allclose(sizes_test, sizes_expected)
+
+    def test_parse_global_label_override(self):
+        """ Test that we parse the default label gen with an override. """
+        test_yaml = f"""
+        - Row:
+          - {paths[0]}
+          - Col:
+            - {paths[1]}
+            - {paths[2]}:
+                text: "A"
+            - Row:
+              - {paths[3]}
+              - {paths[4]}
+        - Options:
+          - default_label: "{{index+1}}."
+        """
+        test_config = yaml.load(test_yaml, Loader=yaml.FullLoader)
+        pos_arr = sp.parse_yaml(test_config).run()
+
+        labels = get_coords(pos_arr, "label")
+        text_test = [l.text for l in labels]
+        text_expected = [f"{i+1}." for i in range(5)]
+        text_expected[2] = "A"
+
+        self.assertEqual(text_test, text_expected)
+
 
 if __name__ == "__main__":
     unittest.main()

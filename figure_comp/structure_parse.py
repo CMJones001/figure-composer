@@ -53,7 +53,7 @@ import yaml
 from icecream import ic
 
 from figure_comp.coordinate_tracking import Pos
-from figure_comp.load_image import Label
+from figure_comp.load_image import Label, generate_default_label_text
 from figure_comp.structure_comp import Col, Row, _Container
 
 
@@ -82,7 +82,7 @@ def _read_branch(branch, dry=False, **kwargs):
     return header_struct(struct)
 
 
-def parse_file(file_path: Path, default_labels=None):
+def parse_file(file_path: Path):
     """ Turn the contents of the given file into a nested Row/Col object. """
     try:
         with open(file_path, "r") as f:
@@ -95,15 +95,18 @@ def parse_file(file_path: Path, default_labels=None):
         print("Check for colons after first option line and indents without dashes! ")
         raise SystemExit(1)
 
-    return parse_yaml(structure_dict, default_labels=default_labels)
+    return parse_yaml(structure_dict)
 
 
-def parse_yaml(structure_dict: dict, dry=False, default_labels=None) -> _Container:
+def parse_yaml(structure_dict: dict, dry=False) -> _Container:
     """ Convert the yaml dict into a Row or Col container. """
     # Remove top level list if passed
+
     if isinstance(structure_dict, list):
-        structure_dict = structure_dict[0]
-    return _read_branch(structure_dict, dry=dry, default_labels=default_labels)
+        flattened_dict = _collapse_dictionary_list(structure_dict)
+
+    default_labels = get_defaults(flattened_dict)
+    return _read_branch(flattened_dict, dry=dry, default_labels=default_labels)
 
 
 def _parse_complex_path(leaf, default_labels=None):
@@ -128,7 +131,6 @@ def _parse_path(leaf, default_labels=None):
     """ Parse a simple path into a path. """
     if default_labels is not None:
         label = next(default_labels)()
-        ic(label)
     else:
         label = None
     return Pos(leaf, label)
@@ -138,5 +140,40 @@ def _is_subbranch(leaf):
     return "Col" in leaf or "Row" in leaf
 
 
-if __name__ == "__main__":
-    ic(parse_file())
+def get_defaults(structure_dict: dict) -> Label:
+    """Get the default label options from the yaml file.
+
+    This has to be done before the tree is parsed and so is treated separately.
+    """
+
+    if "Options" in structure_dict:
+        label_defaults = _collapse_dictionary_list(structure_dict.pop("Options"))
+    else:
+        label_defaults = {}
+
+    #  Convert the names of the yaml fields into kwargs for the label generator
+    translation_dict = dict(
+        default_label="format_str", pos="pos_default", size="size_default"
+    )
+    for yaml_key, gen_key in translation_dict.items():
+        _rename_dict_keys(label_defaults, yaml_key, gen_key)
+
+    return generate_default_label_text(**label_defaults)
+
+
+def _collapse_dictionary_list(list_):
+    """ Given a list of dictionaries convert this into one single dictionary. """
+    dict_ = {}
+    for entry in list_:
+        for key, value in entry.items():
+            if key in dict_:
+                raise ValueError(f"Collision on key {key} when flattening dict")
+            dict_[key] = value
+    return dict_
+
+
+def _rename_dict_keys(dict_, old_key, new_key):
+    """ Move an item in a dictionary to a new key. fail silently if key is not found. """
+    if old_key not in dict_:
+        return
+    dict_[new_key] = dict_.pop(old_key)
