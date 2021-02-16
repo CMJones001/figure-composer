@@ -9,12 +9,28 @@ dist
 .coverage
 htmlcov
 .flake8
+TAGS
+.idea
+config
 
 # virtual env stuff
 .env
 .venv
 
+figure_comp/tests/test_im/*
+
 # Emacs stuff
 .dir-locals.el
 .mypy_cache/
 .#*
+fonts/*
+
+!fonts/cm-unicode-0.7.0/cmunrm.tff
+!fonts/cm-unicode-0.7.0/FAQ
+!fonts/cm-unicode-0.7.0/fonts.scale
+!fonts/cm-unicode-0.7.0/README
+!fonts/cm-unicode-0.7.0/Changes
+!fonts/cm-unicode-0.7.0/OFL-FAQ.txt
+!fonts/cm-unicode-0.7.0/OFL.txt
+!fonts/cm-unicode-0.7.0/FontLog.txt
+!fonts/cm-unicode-0.7.0/Fontmap.CMU

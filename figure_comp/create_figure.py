@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
-import figure_comp.structure_parse as sp
-import argh
 from pathlib import Path
+
+import argh
+
+import figure_comp.load_image as li
+import figure_comp.structure_parse as sp
+from icecream import ic
 
 """ Manager for the figure composer.
 
@@ -47,17 +51,16 @@ Two columns with two images each, surrounding a fifth image in a row.
 
 
 def main(
-    configuration_path: Path = "broken_config.yaml",
-    save_path: Path = "/tmp/debug-figure.png",
+    configuration_path: Path,
+    save_path: Path,
     dry: bool = False,
 ):
     """ Create the figure from the description in the given configuration file. """
     # Convert the yaml into a structure schemematic
-
     parsed_structure = sp.parse_file(configuration_path)
 
     # Convert the schemematic into a figure structure
-    assembled_figure = parsed_structure.assemble_figure().run()
+    assembled_figure = parsed_structure.run()
 
     if dry:
         assembled_figure.sketch(save_path, label=True)

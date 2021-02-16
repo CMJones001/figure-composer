@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 from numpy.testing import assert_allclose
 
+from figure_comp.load_image import Label
 from figure_comp.coordinate_tracking import Pos, PosArray
 import figure_comp.coordinate_tracking as ct
 
@@ -576,6 +577,34 @@ class TestNormalise(unittest.TestCase):
 
         for attr in ["x_range", "y_range"]:
             self.assertTrue(isinstance(getattr(pos_arr, i), int) for i in attr)
+
+
+class TestAnnonate(unittest.TestCase):
+    """ Test labelling of the the image. """
+
+    def test_single_image_blank(self):
+        """ Test annotation of a single blank image through the pos array. """
+        label = Label("test image", (0.1, 0.1))
+        pos = Pos("None", label, 500, 500)
+        pos.annotate()
+
+        # Test that there are darker text areas
+        flattened = pos.image.data[..., :3].mean(axis=-1)
+        n_black_pixels = (flattened < 10).sum()
+
+        self.assertGreater(n_black_pixels, 50, msg="Not enough black/text pixels")
+        self.assertLess(n_black_pixels, 5000, msg="Too many black/text pixels")
+
+    def test_merged_annotate(self):
+        """ Annotate multiple images. """
+        labels_str = [f"{i}." for i in "ab"]
+        labels = [Label(l, (0.05, 0.05)) for l in labels_str]
+
+        pos_arr = Pos(path=test_im_dir / "square-im-1.png", label=labels[0])
+        pos_arr += Pos(path=test_im_dir / "square-im-2.png", label=labels[1])
+
+        pos_arr._normalise_values()
+        pos_arr.populate("/tmp/merged-annotate.png", final_width=1200)
 
 
 if __name__ == "__main__":
