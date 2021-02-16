@@ -5,15 +5,11 @@ verify_ssl = true
 
 [dev-packages]
 ipdb = "*"
-trepan3k = "*"
 icecream = "*"
-bpython = "*"
-jedi = "*"
 pytest = "*"
 
 [packages]
 numpy = "*"
-db-format = {editable = true,path = "/home/carl/Documents/Designs/pdb_format"}
 pudb = "*"
 figurecompositor = {editable = true,path = "."}
 matplotlib = "*"
