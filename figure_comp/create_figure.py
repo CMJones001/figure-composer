@@ -51,8 +51,8 @@ Two columns with two images each, surrounding a fifth image in a row.
 
 
 def main(
-    configuration_path: Path = "broken_config.yaml",
-    save_path: Path = "/tmp/debug-figure.png",
+    configuration_path: Path,
+    save_path: Path,
     dry: bool = False,
 ):
     """ Create the figure from the description in the given configuration file. """
