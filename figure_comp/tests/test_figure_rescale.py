@@ -8,6 +8,18 @@ from typing import List
 import numpy as np
 
 import figure_comp.figure_rescale as fr
+import figure_comp.tests.create_test_figures as ctf
+
+
+def setUpModule():
+    """ Create test images if they do not exist. """
+    project_dir = Path(__file__).resolve().parents[1]
+    test_im_dir = project_dir / "tests/test_im/"
+
+    if not test_im_dir.is_dir():
+        test_im_dir.mkdir(parents=True)
+        ctf.create_square_plots()
+        ctf.create_rect_plots()
 
 
 class Test_Padding(unittest.TestCase):
@@ -57,7 +69,7 @@ class TestRowMerge(unittest.TestCase):
         y_size = 1000
 
         merged_fig = fr.merge_row_scale(sub_images, y_size=y_size)
-        if True:
+        if False:
             merged_fig.save("/tmp/test-rescale-row.png")
 
         total_width = sum([int(i.aspect * y_size) for i in sub_images])
@@ -169,7 +181,7 @@ class TestDualMerge(unittest.TestCase):
         )
 
         total_width = x_size
-        total_height = sum([round(x_size / i.aspect) for i in sub_images[:3]]) / 2
+        total_height = sum([(x_size / i.aspect) for i in sub_images[:3]]) / 2
 
         if self.save:
             merged_fig.save("/tmp/test-dual-col-scale-short.png")
@@ -177,7 +189,7 @@ class TestDualMerge(unittest.TestCase):
         shape_expected = (total_height, total_width, 4)
 
         shape_test = merged_fig.shape
-        np.testing.assert_allclose(shape_test, shape_expected, rtol=5e-3)
+        np.testing.assert_allclose(shape_test, shape_expected, rtol=0.05)
 
 
 def _get_test_ims() -> List[Path]:

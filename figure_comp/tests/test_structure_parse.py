@@ -147,8 +147,6 @@ class TestAssembleStruct(unittest.TestCase):
 
         # Test that arrays are the same
         for im_test, im_expected in zip(pos_test.cont, pos_expected):
-            ic(im_test)
-            ic(im_expected)
             self.assertEqual(im_test, im_expected)
 
         self.assertEqual(len(pos_test.cont), len(pos_expected))
@@ -251,8 +249,6 @@ class TestAssembleStruct(unittest.TestCase):
 
         # Middle column with single image
         main_body = figure_test[1]
-        ic(main_body[1])
-        ic(ims[4])
         self.assertEqual(main_body[1], ims[4])
 
         # First column
@@ -403,7 +399,6 @@ class TestAssembleOptions(unittest.TestCase):
             return header_struct(struct)
 
         struct = read_branch(test_config).run()
-        ic(struct)
         struct.populate("/tmp/new_parse.png")
 
     def test_parse_global_opts(self):
